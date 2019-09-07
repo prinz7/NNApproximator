@@ -1,7 +1,9 @@
-#include <torch/torch.h>
-#include <iostream>
+#include "MachineLearningTest/torchtest.h"
 
 int main() {
-    torch::Tensor tensor = torch::rand({2, 3});
-    std::cout << tensor << std::endl;
+  TorchTest::TorchTest helper;
+
+  helper.run();
+
+  return 0;
 }
