@@ -6,7 +6,7 @@ namespace {
 
 const size_t NUMBER_OF_EPOCHS{1000};
 const size_t SIZE_OF_TEST_DATA{20};
-const double LOWER_BOUND_OF_TEST_RANGE{1};
+const double LOWER_BOUND_OF_TEST_RANGE{0};
 const double UPPER_BOUND_OF_TEST_RANGE{5};
 const double LEARNING_RATE{0.0001};
 

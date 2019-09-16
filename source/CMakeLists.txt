@@ -4,3 +4,4 @@ target_sources(TorchTest
 )
 
 add_subdirectory(torchtest)
+add_subdirectory(Utilities)

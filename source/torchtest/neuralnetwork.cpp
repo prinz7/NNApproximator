@@ -4,16 +4,16 @@ namespace TorchTest {
 
 Network::Network()
 {
-  fc1 = register_module("fc1", torch::nn::Linear(1, 20));
-  fc2 = register_module("fc2", torch::nn::Linear(20, 10));
-  fc3 = register_module("fc3", torch::nn::Linear(10, 1));
+  fc1 = register_module("fc1", torch::nn::Linear(1, 100));
+  fc2 = register_module("fc2", torch::nn::Linear(100, 100));
+  fc3 = register_module("fc3", torch::nn::Linear(100, 1));
 }
 
 torch::Tensor Network::forward(torch::Tensor x)
 {
   x = torch::sigmoid(fc1->forward(x));
   x = torch::sigmoid(fc2->forward(x));
-  x = torch::relu(fc3->forward(x));
+  x = (fc3->forward(x));
   return x;
 }
 
