@@ -78,7 +78,7 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
     }
   }
 
-  return options;
+  return std::make_optional(options);
 }
 
 }

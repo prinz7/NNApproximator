@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
   }
 
   NeuralNetwork::Logic logic{};
-  if (logic.performUserRequest(*options)) {
+  if (!logic.performUserRequest(*options)) {
     return 2;
   }
 
