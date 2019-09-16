@@ -1,6 +1,6 @@
 #pragma once
 
-#include "neuralnetwork.h"
+#include "NeuralNetwork/neuralnetwork.h"
 
 namespace TorchTest {
 
@@ -21,7 +21,7 @@ private:
   void initialize();
 
 private:
-  Network network;
+  NeuralNetwork::Network network;
   std::vector<std::pair<torch::Tensor, torch::Tensor>> testData;
 };
 

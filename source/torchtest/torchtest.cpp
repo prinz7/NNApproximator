@@ -17,7 +17,8 @@ TensorDataType TorchTest::TargetFunction(TensorDataType x)
   return 10 + 7 * x + 5 * x * x;
 }
 
-TorchTest::TorchTest()
+TorchTest::TorchTest() :
+  network(NeuralNetwork::Network(1, 1, {30, 30}))
 {
   initialize();
 }
