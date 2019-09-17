@@ -1,12 +1,11 @@
 #pragma once
 
 #include <map>
-#include <filesystem>
 #include <string>
 
 namespace Utilities {
 
-using FilePath = std::filesystem::path;
+using FilePath = std::string;
 
 namespace DefaultValues {
 

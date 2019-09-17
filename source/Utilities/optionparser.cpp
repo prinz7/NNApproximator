@@ -33,7 +33,7 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
           std::cout << "Not enough parameters after " << inputString << std::endl;
           return std::nullopt;
         }
-        options.InputFilePath = argv[++i];
+        options.InputFilePath = std::string(argv[++i]);
         break;
       case CLIParameters::NumberOfInputVariabes:
         if (i + 1 >= argc) {
