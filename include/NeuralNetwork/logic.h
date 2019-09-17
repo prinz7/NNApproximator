@@ -14,6 +14,7 @@ public:
 
 private:
   void trainNetwork(Network& network, uint32_t numberOfEpochs, const DataVector& data);
+  double calculateMeanError(Network& network, const DataVector& testData);
 };
 
 }
