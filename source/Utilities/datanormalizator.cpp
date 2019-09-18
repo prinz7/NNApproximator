@@ -40,4 +40,16 @@ void DataNormalizator::Normalize(DataVector& data, std::pair<MinMaxVector, MinMa
   }
 }
 
+void DataNormalizator::Denormalize(torch::Tensor& tensor, MinMaxVector const& minMaxVector, TensorDataType const oldMinValue, TensorDataType const oldMaxValue)
+{
+  if (tensor.size(0) != static_cast<int64_t>(minMaxVector.size())) {
+    return;
+  }
+
+  TensorDataType normalizationFactor = oldMaxValue - oldMinValue;
+  for (size_t i = 0; i < minMaxVector.size(); ++i) {
+    tensor[i] = (((tensor[i] - oldMinValue) / normalizationFactor) * (minMaxVector[i].second - minMaxVector[i].first)) + minMaxVector[i].first;
+  }
+}
+
 }

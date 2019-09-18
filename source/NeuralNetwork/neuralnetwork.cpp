@@ -36,11 +36,6 @@ torch::Tensor Network::forward(torch::Tensor x)
   return x;
 }
 
-std::vector<torch::Tensor> Network::parameters()
-{
-  return torch::nn::Module::parameters();
-}
-
 void Network::addLayer(const size_t layerNumber, const uint32_t numberOfInputNodes, const uint32_t numberOfOutputNodes)
 {
   layers.emplace_back(register_module("layer" + std::to_string(layerNumber), torch::nn::Linear(numberOfInputNodes, numberOfOutputNodes)));

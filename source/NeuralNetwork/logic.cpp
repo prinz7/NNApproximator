@@ -13,24 +13,40 @@ bool Logic::performUserRequest(const Utilities::ProgramOptions &options)
     return false;
   }
 
-  MinMaxVector inputMinMax;
-  MinMaxVector outputMinMax;
-  auto minMax = std::make_pair(inputMinMax, outputMinMax);
+  auto minMax = std::make_pair(MinMaxVector(), MinMaxVector());
+  MinMaxVector& inputMinMax = minMax.first;
+  MinMaxVector& outputMinMax = minMax.second;
+
   Utilities::DataNormalizator::Normalize(*data, minMax);  // TODO let user control normalization
 
-  int32_t tryCount = 0;
+  Network network{options.NumberOfInputVariables, options.NumberOfOutputVariables, {4000}}; // TODO fix hardcoded value
+  trainNetwork(network, options.NumberOfEpochs, *data);
 
-  while (tryCount < 100) { // TODO fix initialization
-    Network network{options.NumberOfInputVariables, options.NumberOfOutputVariables, {500}}; // TODO fix hardcoded value
-    if (network.forward(data->front().first).item<float>() > 0.0f) {
-      std::cout << "Needed " << tryCount + 1 << " tries." << std::endl;
-      tryCount = 100;
-      trainNetwork(network, options.NumberOfEpochs, *data);
-    }
-    ++tryCount;
+  network.eval();
+
+  // Output behaviour of network: // TODO user parametrization
+  for (auto const& [inputTensor, outputTensor] : *data) {
+    auto prediction = network.forward(inputTensor);
+    auto loss = torch::mse_loss(prediction, outputTensor);
+
+    auto dInputTensor = inputTensor;
+    auto dOutputTensor = outputTensor;
+
+    Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax);
+    Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax);
+    Utilities::DataNormalizator::Denormalize(prediction, outputMinMax);
+
+    std::cout << "\nx: ";
+    for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) std::cout << inputTensor[i].item<TensorDataType>() << " ";
+    std::cout << "\ny: ";
+    for (uint32_t i = 0; i < options.NumberOfOutputVariables; ++i) std::cout << outputTensor[i].item<TensorDataType>() << " ";
+    std::cout << "\nprediction: ";
+    for (uint32_t i = 0; i < options.NumberOfOutputVariables; ++i) std::cout << prediction[i].item<TensorDataType>() << " ";
+    std::cout << "\nloss: " << loss.item<double>() << std::endl;
+  }
+
 //    torch::save(network, ""); // TODO test this
 //    torch::load(network, "");
-  }
 
   return true;
 }
@@ -42,15 +58,17 @@ void Logic::trainNetwork(Network& network, uint32_t numberOfEpochs, const DataVe
   auto lastMeanError = calculateMeanError(network, data);
   auto currentMeanError = calculateMeanError(network, data);
   auto start = std::chrono::steady_clock::now();
+
   for (size_t epoch = 1; epoch <= numberOfEpochs; ++epoch) {
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
     auto remaining = ((elapsed / std::max(epoch - 1, 1ul)) * (numberOfEpochs - epoch + 1));
     lastMeanError = currentMeanError;
     currentMeanError = calculateMeanError(network, data);
-    if (epoch == numberOfEpochs && lastMeanError - currentMeanError > 0.00001) {
+
+    if (epoch == numberOfEpochs && lastMeanError - currentMeanError > 0.00000001) {
       std::cout << "\rContinue training, because mean error changed from " << lastMeanError << " to " << currentMeanError;
       std::flush(std::cout);
-//      --epoch;
+      --epoch;
     } else {
       std::cout << "\rEpoch " << epoch << " of " << numberOfEpochs << ". Current mean error: " << currentMeanError <<
                 " -- Remaining time: " << formatDuration<std::chrono::milliseconds, std::chrono::hours, std::chrono::minutes, std::chrono::seconds>(remaining); // TODO better output + only if wanted
@@ -70,16 +88,9 @@ void Logic::trainNetwork(Network& network, uint32_t numberOfEpochs, const DataVe
 
       loss.backward();
       optimizer.step();
-
-      if (epoch == numberOfEpochs) {
-        std::cout << "\nx: " << x << std::endl;
-        std::cout << "y: " << y.item<TensorDataType>() << std::endl;
-        std::cout << "prediction: " << prediction.item<TensorDataType>() << std::endl;
-        std::cout << "loss: " << loss.item<double>() << std::endl << std::endl;
-      }
     }
   }
-  std::cout << "Training duration: " << formatDuration<std::chrono::milliseconds, std::chrono::hours, std::chrono::minutes, std::chrono::seconds>
+  std::cout << "\nTraining duration: " << formatDuration<std::chrono::milliseconds, std::chrono::hours, std::chrono::minutes, std::chrono::seconds>
     (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start));
 }
 
