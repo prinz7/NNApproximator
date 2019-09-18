@@ -44,7 +44,7 @@ std::optional<DataVector> FileParser::ParseInputFile(const std::string& path, ui
         std::cout << "Error: Unable to parse output data." << std::endl;
         return std::nullopt;
       }
-      outTensor[i] = std::max(value * 1000000, 0.0);
+      outTensor[i] = value;
     }
 
     data.emplace_back(std::make_pair(inTensor, outTensor));
