@@ -26,10 +26,12 @@ Network::Network(const uint32_t numberOfInputNodes, const uint32_t numberOfOutpu
 
 torch::Tensor Network::forward(torch::Tensor x)
 {
-  for (size_t i = 0; i < layers.size() - 1; ++i) {
+//  x = torch::dropout(torch::sigmoid(layers[0]->forward(x)), 0.2, is_training());
+  for (size_t i = 0; i < layers.size() /*- 1*/; ++i) {
     x = torch::sigmoid(layers[i]->forward(x));
   }
-  x = layers[layers.size() - 1]->forward(x);
+//  x = layers[layers.size() - 1]->forward(x);
+
 //  x = torch::sigmoid(fc1->forward(x));
 //  x = torch::sigmoid(fc2->forward(x));
 //  x = (fc3->forward(x));

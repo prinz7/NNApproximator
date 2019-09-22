@@ -17,7 +17,7 @@ bool Logic::performUserRequest(const Utilities::ProgramOptions &options)
   MinMaxVector& inputMinMax = minMax.first;
   MinMaxVector& outputMinMax = minMax.second;
 
-  Utilities::DataNormalizator::Normalize(*data, minMax);  // TODO let user control normalization
+  Utilities::DataNormalizator::Normalize(*data, minMax, 0.0, 1.0);  // TODO let user control normalization
 
   Network network{options.NumberOfInputVariables, options.NumberOfOutputVariables, {4000}}; // TODO fix hardcoded value
   trainNetwork(network, options.NumberOfEpochs, *data);
@@ -32,9 +32,9 @@ bool Logic::performUserRequest(const Utilities::ProgramOptions &options)
     auto dInputTensor = inputTensor;
     auto dOutputTensor = outputTensor;
 
-    Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax);
-    Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax);
-    Utilities::DataNormalizator::Denormalize(prediction, outputMinMax);
+    Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0);
+    Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0);
+    Utilities::DataNormalizator::Denormalize(prediction, outputMinMax, 0.0 , 1.0);
 
     std::cout << "\nx: ";
     for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) std::cout << inputTensor[i].item<TensorDataType>() << " ";
@@ -65,7 +65,7 @@ void Logic::trainNetwork(Network& network, uint32_t numberOfEpochs, const DataVe
     lastMeanError = currentMeanError;
     currentMeanError = calculateMeanError(network, data);
 
-    if (epoch == numberOfEpochs && lastMeanError - currentMeanError > 0.00000001) {
+    if (epoch == numberOfEpochs && lastMeanError - currentMeanError > 0.000001) {
       std::cout << "\rContinue training, because mean error changed from " << lastMeanError << " to " << currentMeanError;
       std::flush(std::cout);
       --epoch;
