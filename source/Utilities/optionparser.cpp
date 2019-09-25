@@ -33,7 +33,7 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
           std::cout << "Not enough parameters after " << inputString << std::endl;
           return std::nullopt;
         }
-        options.InputFilePath = std::string(argv[++i]);
+        options.InputDataFilePath = std::string(argv[++i]);
         break;
       case CLIParameters::NumberOfInputVariabes:
         if (i + 1 >= argc) {
@@ -87,9 +87,20 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
         }
         options.ShowProgressDuringTraining = ConvertStringToBool(argv[++i]);
         break;
-      default:
-        std::cout << "Unknown error occured during parsing of the program options." << std::endl;
-        return std::nullopt;
+      case CLIParameters::InputNetworkParameters:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        options.InputNetworkParameters = std::string(argv[++i]);
+        break;
+      case CLIParameters::OutputNetworkParameters:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        options.OutputNetworkParameters = std::string(argv[++i]);
+        break;
     }
   }
 

@@ -6,9 +6,10 @@
 
 namespace NeuralNetwork {
 
-bool Logic::performUserRequest(const Utilities::ProgramOptions &options)
+bool Logic::performUserRequest(const Utilities::ProgramOptions& user_options)
 {
-  auto data = Utilities::FileParser::ParseInputFile(options.InputFilePath, options.NumberOfInputVariables, options.NumberOfOutputVariables);
+  options = user_options;
+  auto data = Utilities::FileParser::ParseInputFile(options.InputDataFilePath, options.NumberOfInputVariables, options.NumberOfOutputVariables);
   if (!data) {
     return false;
   }
@@ -19,14 +20,19 @@ bool Logic::performUserRequest(const Utilities::ProgramOptions &options)
 
   Utilities::DataNormalizator::Normalize(*data, minMax, 0.0, 1.0);  // TODO let user control normalization
 
-  Network network{options.NumberOfInputVariables, options.NumberOfOutputVariables, {4000}}; // TODO fix hardcoded value
-  trainNetwork(network, options.NumberOfEpochs, *data);
+  Network network{options.NumberOfInputVariables, options.NumberOfOutputVariables, std::vector<uint32_t>{4000}}; // TODO fix hardcoded value
 
-  network.eval();
+  if (options.InputNetworkParameters != Utilities::DefaultValues::INPUT_NETWORK_PARAMETERS) {
+    torch::load(network, options.InputNetworkParameters);
+  }
+
+  trainNetwork(network, *data);
+
+  network->eval();
 
   // Output behaviour of network: // TODO user parametrization
   for (auto const& [inputTensor, outputTensor] : *data) {
-    auto prediction = network.forward(inputTensor);
+    auto prediction = network->forward(inputTensor);
     auto loss = torch::mse_loss(prediction, outputTensor);
 
     auto dInputTensor = inputTensor;
@@ -45,18 +51,20 @@ bool Logic::performUserRequest(const Utilities::ProgramOptions &options)
     std::cout << "\nloss: " << loss.item<double>() << std::endl;
   }
 
-//    torch::save(network, ""); // TODO test this
-//    torch::load(network, "");
+  if (options.OutputNetworkParameters != Utilities::DefaultValues::OUTPUT_NETWORK_PARAMETERS) {
+    torch::save(network, options.OutputNetworkParameters);
+  }
 
   return true;
 }
 
-void Logic::trainNetwork(Network& network, uint32_t numberOfEpochs, const DataVector& data)
+void Logic::trainNetwork(Network& network, const DataVector& data)
 {
-  torch::optim::SGD optimizer(network.parameters(), 0.000001); // TODO fix hardcoded valuer
+  const auto& numberOfEpochs = options.NumberOfEpochs;
+  torch::optim::SGD optimizer(network->parameters(), 0.000001); // TODO fix hardcoded value
 
   auto lastMeanError = calculateMeanError(network, data);
-  auto currentMeanError = calculateMeanError(network, data);
+  auto currentMeanError = lastMeanError;
   auto start = std::chrono::steady_clock::now();
 
   for (size_t epoch = 1; epoch <= numberOfEpochs; ++epoch) {
@@ -65,7 +73,7 @@ void Logic::trainNetwork(Network& network, uint32_t numberOfEpochs, const DataVe
     lastMeanError = currentMeanError;
     currentMeanError = calculateMeanError(network, data);
 
-    if (epoch == numberOfEpochs && lastMeanError - currentMeanError > 0.000001) {
+    if (epoch == numberOfEpochs && lastMeanError - currentMeanError > 0.00001) { // TODO fix hardcoded value
       std::cout << "\rContinue training, because mean error changed from " << lastMeanError << " to " << currentMeanError;
       std::flush(std::cout);
       --epoch;
@@ -75,8 +83,8 @@ void Logic::trainNetwork(Network& network, uint32_t numberOfEpochs, const DataVe
       std::flush(std::cout);
     }
 
-    for (auto [x, y] : data) {
-      auto prediction = network.forward(x);
+    for (auto const& [x, y] : data) {
+      auto prediction = network->forward(x);
 
 //      prediction = prediction.toType(torch::ScalarType::Long);
 //      auto target = y.toType(torch::ScalarType::Long);
@@ -94,11 +102,11 @@ void Logic::trainNetwork(Network& network, uint32_t numberOfEpochs, const DataVe
     (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start));
 }
 
-double Logic::calculateMeanError(Network &network, const DataVector &testData)
+double Logic::calculateMeanError(Network& network, const DataVector &testData)
 {
   double error = 0;
-  for (auto [x, y] : testData) {
-    auto prediction = network.forward(x);
+  for (auto const& [x, y] : testData) {
+    auto prediction = network->forward(x);
     auto loss = torch::mse_loss(prediction, y);
     error += loss.item<double>();
   }

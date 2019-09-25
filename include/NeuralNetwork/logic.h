@@ -13,8 +13,12 @@ public:
   bool performUserRequest(const Utilities::ProgramOptions& options);
 
 private:
-  void trainNetwork(Network& network, uint32_t numberOfEpochs, const DataVector& data);
-  double calculateMeanError(Network& network, const DataVector& testData);
+  void trainNetwork(Network& network, const DataVector& data);
+  [[nodiscard]]
+  static double calculateMeanError(Network& network, const DataVector& testData);
+
+private:
+  Utilities::ProgramOptions options {};
 };
 
 }

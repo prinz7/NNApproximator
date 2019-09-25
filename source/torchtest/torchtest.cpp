@@ -18,7 +18,7 @@ TensorDataType TorchTest::TargetFunction(TensorDataType x)
 }
 
 TorchTest::TorchTest() :
-  network(NeuralNetwork::Network(1, 1, {30, 30}))
+  network(NeuralNetwork::NetworkImpl(1, 1, {30, 30}))
 {
   initialize();
 }

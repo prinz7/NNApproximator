@@ -21,7 +21,7 @@ private:
   void initialize();
 
 private:
-  NeuralNetwork::Network network;
+  NeuralNetwork::NetworkImpl network;
   std::vector<std::pair<torch::Tensor, torch::Tensor>> testData;
 };
 

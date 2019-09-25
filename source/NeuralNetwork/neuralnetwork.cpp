@@ -2,7 +2,7 @@
 
 namespace NeuralNetwork {
 
-Network::Network(const uint32_t numberOfInputNodes, const uint32_t numberOfOutputNode, const std::vector<uint32_t>& hiddenLayers)
+NetworkImpl::NetworkImpl(const uint32_t numberOfInputNodes, const uint32_t numberOfOutputNode, const std::vector<uint32_t>& hiddenLayers)
 {
   if (hiddenLayers.empty()) {
     addLayer(0, numberOfInputNodes, numberOfOutputNode);
@@ -17,14 +17,14 @@ Network::Network(const uint32_t numberOfInputNodes, const uint32_t numberOfOutpu
   }
 }
 
-//Network::Network()
+//NetworkImpl::NetworkImpl()
 //{
 //  fc1 = register_module("fc1", torch::nn::Linear(1, 100));
 //  fc2 = register_module("fc2", torch::nn::Linear(100, 100));
 //  fc3 = register_module("fc3", torch::nn::Linear(100, 1));
 //}
 
-torch::Tensor Network::forward(torch::Tensor x)
+torch::Tensor NetworkImpl::forward(torch::Tensor x)
 {
 //  x = torch::dropout(torch::sigmoid(layers[0]->forward(x)), 0.2, is_training());
   for (size_t i = 0; i < layers.size() /*- 1*/; ++i) {
@@ -38,7 +38,7 @@ torch::Tensor Network::forward(torch::Tensor x)
   return x;
 }
 
-void Network::addLayer(const size_t layerNumber, const uint32_t numberOfInputNodes, const uint32_t numberOfOutputNodes)
+void NetworkImpl::addLayer(const size_t layerNumber, const uint32_t numberOfInputNodes, const uint32_t numberOfOutputNodes)
 {
   layers.emplace_back(register_module("layer" + std::to_string(layerNumber), torch::nn::Linear(numberOfInputNodes, numberOfOutputNodes)));
 }

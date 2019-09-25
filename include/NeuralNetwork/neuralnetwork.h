@@ -4,10 +4,10 @@
 
 namespace NeuralNetwork {
 
-class Network : public torch::nn::Module
+class NetworkImpl : public torch::nn::Module
 {
 public:
-  Network(uint32_t numberOfInputNodes, uint32_t numberOfOutputNode, const std::vector<uint32_t>& hiddenLayers);
+  NetworkImpl(uint32_t numberOfInputNodes, uint32_t numberOfOutputNode, const std::vector<uint32_t>& hiddenLayers);
 
 public:
   torch::Tensor forward(torch::Tensor x);
@@ -21,5 +21,7 @@ private:
 //  torch::nn::Linear fc2{nullptr};
 //  torch::nn::Linear fc3{nullptr};
 };
+
+TORCH_MODULE(Network);
 
 }
