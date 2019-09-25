@@ -3,6 +3,7 @@
 #include "Utilities/fileparser.h"
 
 #include <chrono>
+#include <random>
 
 namespace NeuralNetwork {
 
@@ -61,30 +62,46 @@ bool Logic::performUserRequest(const Utilities::ProgramOptions& user_options)
 
 void Logic::trainNetwork(Network& network, const DataVector& data)
 {
+  DataVector randomlyShuffledData(data);
   const auto& numberOfEpochs = options.NumberOfEpochs;
   torch::optim::SGD optimizer(network->parameters(), 0.000001); // TODO fix hardcoded value
+
+  std::random_device rd;
+  std::mt19937 g(rd());
 
   auto lastMeanError = calculateMeanError(network, data);
   auto currentMeanError = lastMeanError;
   auto start = std::chrono::steady_clock::now();
 
-  for (size_t epoch = 1; epoch <= numberOfEpochs; ++epoch) {
+  bool continueTraining = true;
+  int32_t numberOfDeteriorationsInRow = 0;
+
+  for (size_t epoch = 1; epoch <= numberOfEpochs || continueTraining; ++epoch) {
+    std::shuffle(randomlyShuffledData.begin(), randomlyShuffledData.end(), g);
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
     auto remaining = ((elapsed / std::max(epoch - 1, 1ul)) * (numberOfEpochs - epoch + 1));
     lastMeanError = currentMeanError;
     currentMeanError = calculateMeanError(network, data);
 
-    if (epoch == numberOfEpochs && lastMeanError - currentMeanError > 0.01) { // TODO fix hardcoded value
-      std::cout << "\rContinue training, because mean error changed from " << lastMeanError << " to " << currentMeanError;
-      std::flush(std::cout);
-      --epoch;
+    if (lastMeanError - currentMeanError < 0.0) {
+      ++numberOfDeteriorationsInRow;
+      if (numberOfDeteriorationsInRow > 3) {
+        continueTraining = false;
+      }
     } else {
-      std::cout << "\rEpoch " << epoch << " of " << numberOfEpochs << ". Current mean error: " << currentMeanError <<
+      numberOfDeteriorationsInRow = 0;
+    }
+
+    if (epoch > numberOfEpochs) { // TODO fix hardcoded value
+      std::cout << "\rContinue training. Mean squared error changed from " << lastMeanError << " to " << currentMeanError << " -- epoch: " << epoch;
+      std::flush(std::cout);
+    } else {
+      std::cout << "\rEpoch " << epoch << " of " << numberOfEpochs << ". Current mean squared error: " << currentMeanError << " previous: " << lastMeanError <<
                 " -- Remaining time: " << formatDuration<std::chrono::milliseconds, std::chrono::hours, std::chrono::minutes, std::chrono::seconds>(remaining); // TODO better output + only if wanted
       std::flush(std::cout);
     }
 
-    for (auto const& [x, y] : data) {
+    for (auto const& [x, y] : randomlyShuffledData) {
       auto prediction = network->forward(x);
 
 //      prediction = prediction.toType(torch::ScalarType::Long);

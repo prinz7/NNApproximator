@@ -31,7 +31,7 @@ torch::Tensor NetworkImpl::forward(torch::Tensor x)
   for (size_t i = 0; i < layers.size() - 1; ++i) {
     x = torch::sigmoid(layers[i]->forward(x));
   }
-  x = (layers[layers.size() - 1]->forward(x));
+  x = torch::sigmoid(layers[layers.size() - 1]->forward(x));
 
 //  x = torch::sigmoid(fc1->forward(x));
 //  x = torch::sigmoid(fc2->forward(x));
