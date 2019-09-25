@@ -1,4 +1,5 @@
 #include "NeuralNetwork/neuralnetwork.h"
+#include "Utilities/constants.h"
 
 namespace NeuralNetwork {
 
@@ -27,10 +28,10 @@ NetworkImpl::NetworkImpl(const uint32_t numberOfInputNodes, const uint32_t numbe
 torch::Tensor NetworkImpl::forward(torch::Tensor x)
 {
 //  x = torch::dropout(torch::sigmoid(layers[0]->forward(x)), 0.2, is_training());
-  for (size_t i = 0; i < layers.size() /*- 1*/; ++i) {
+  for (size_t i = 0; i < layers.size() - 1; ++i) {
     x = torch::sigmoid(layers[i]->forward(x));
   }
-//  x = layers[layers.size() - 1]->forward(x);
+  x = (layers[layers.size() - 1]->forward(x));
 
 //  x = torch::sigmoid(fc1->forward(x));
 //  x = torch::sigmoid(fc2->forward(x));
@@ -41,6 +42,7 @@ torch::Tensor NetworkImpl::forward(torch::Tensor x)
 void NetworkImpl::addLayer(const size_t layerNumber, const uint32_t numberOfInputNodes, const uint32_t numberOfOutputNodes)
 {
   layers.emplace_back(register_module("layer" + std::to_string(layerNumber), torch::nn::Linear(numberOfInputNodes, numberOfOutputNodes)));
+  layers[layerNumber]->to(TORCH_DATA_TYPE);
 }
 
 }

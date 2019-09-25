@@ -3,7 +3,9 @@
 #include <torch/torch.h>
 #include <vector>
 
-using TensorDataType = float;
+using TensorDataType = double;
+const torch::ScalarType TORCH_DATA_TYPE = torch::kDouble;
+
 using DataVector = std::vector<std::pair<torch::Tensor, torch::Tensor>>;
 using MinMaxVector = std::vector<std::pair<TensorDataType, TensorDataType>>;
 

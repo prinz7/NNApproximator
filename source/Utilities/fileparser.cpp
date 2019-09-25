@@ -28,7 +28,7 @@ std::optional<DataVector> FileParser::ParseInputFile(const std::string& path, ui
     TensorDataType value;
 
     // get input:
-    auto inTensor = torch::zeros(numberOfInputNodes, torch::kFloat);
+    auto inTensor = torch::zeros(numberOfInputNodes, TORCH_DATA_TYPE);
     for (uint32_t i = 0; i < numberOfInputNodes; ++i) {
       if (!(iss >> value)) {
         std::cout << "Error: Unable to parse input data." << std::endl;
@@ -38,7 +38,7 @@ std::optional<DataVector> FileParser::ParseInputFile(const std::string& path, ui
     }
 
     // get output:
-    auto outTensor = torch::zeros(numberOfOutputNodes, torch::kFloat);
+    auto outTensor = torch::zeros(numberOfOutputNodes, TORCH_DATA_TYPE);
     for (uint32_t i = 0; i < numberOfOutputNodes; ++i) {
       if (!(iss >> value)) {
         std::cout << "Error: Unable to parse output data." << std::endl;

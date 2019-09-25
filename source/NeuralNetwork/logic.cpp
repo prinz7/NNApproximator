@@ -35,19 +35,20 @@ bool Logic::performUserRequest(const Utilities::ProgramOptions& user_options)
     auto prediction = network->forward(inputTensor);
     auto loss = torch::mse_loss(prediction, outputTensor);
 
-    auto dInputTensor = inputTensor;
-    auto dOutputTensor = outputTensor;
+    torch::Tensor dInputTensor = inputTensor.clone();
+    torch::Tensor dOutputTensor = outputTensor.clone();
+    torch::Tensor dPrediction = prediction.clone();
 
-    Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0);
-    Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0);
-    Utilities::DataNormalizator::Denormalize(prediction, outputMinMax, 0.0 , 1.0);
+    Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, true);
+    Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, true);
+    Utilities::DataNormalizator::Denormalize(dPrediction, outputMinMax, 0.0 , 1.0, true);
 
     std::cout << "\nx: ";
-    for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) std::cout << inputTensor[i].item<TensorDataType>() << " ";
+    for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) std::cout << inputTensor[i].item<TensorDataType>() << " (" << dInputTensor[i].item<TensorDataType>() << ") ";
     std::cout << "\ny: ";
-    for (uint32_t i = 0; i < options.NumberOfOutputVariables; ++i) std::cout << outputTensor[i].item<TensorDataType>() << " ";
+    for (uint32_t i = 0; i < options.NumberOfOutputVariables; ++i) std::cout << outputTensor[i].item<TensorDataType>() << " (" << dOutputTensor[i].item<TensorDataType>() << ") ";
     std::cout << "\nprediction: ";
-    for (uint32_t i = 0; i < options.NumberOfOutputVariables; ++i) std::cout << prediction[i].item<TensorDataType>() << " ";
+    for (uint32_t i = 0; i < options.NumberOfOutputVariables; ++i) std::cout << prediction[i].item<TensorDataType>() << " (" << dPrediction[i].item<TensorDataType>() << ") ";
     std::cout << "\nloss: " << loss.item<double>() << std::endl;
   }
 
@@ -73,7 +74,7 @@ void Logic::trainNetwork(Network& network, const DataVector& data)
     lastMeanError = currentMeanError;
     currentMeanError = calculateMeanError(network, data);
 
-    if (epoch == numberOfEpochs && lastMeanError - currentMeanError > 0.00001) { // TODO fix hardcoded value
+    if (epoch == numberOfEpochs && lastMeanError - currentMeanError > 0.01) { // TODO fix hardcoded value
       std::cout << "\rContinue training, because mean error changed from " << lastMeanError << " to " << currentMeanError;
       std::flush(std::cout);
       --epoch;
