@@ -27,16 +27,18 @@ void DataNormalizator::Normalize(DataVector& data, std::pair<MinMaxVector, MinMa
     }
   }
 
-  // Normalize data -- use '(X - min) / (max - min)' to get values between 0 and 1:
-  TensorDataType normalizationFactor = newMaxValue - newMinValue;
   for (auto& [inputTensor, outputTensor] : data) {
-    for (int64_t i = 0; i < numberOfInputNodes; ++i) {
-      inputTensor[i] = ((inputTensor[i].item<TensorDataType>() - inputMinMax[i].first) / (inputMinMax[i].second - inputMinMax[i].first)) * normalizationFactor + newMinValue;
-    }
+    Normalize(inputTensor, inputMinMax, newMinValue, newMaxValue);
+    Normalize(outputTensor, outputMinMax, newMinValue, newMaxValue);
+  }
+}
 
-    for (int64_t i = 0; i < numberOfOutputNodes; ++i) {
-      outputTensor[i] = ((outputTensor[i].item<TensorDataType>() - outputMinMax[i].first) / (outputMinMax[i].second - outputMinMax[i].first)) * normalizationFactor + newMinValue;
-    }
+void DataNormalizator::Normalize(torch::Tensor& tensor, MinMaxVector const& minMaxVector, TensorDataType const newMinValue, TensorDataType const newMaxValue)
+{
+  // Normalize data -- use '(X - min) / (max - min)' to get values between 0 and 1:
+  for (int64_t i = 0; i < tensor.size(0); ++i) {
+    TensorDataType normalizationFactor = newMaxValue - newMinValue;
+    tensor[i] = ((tensor[i].item<TensorDataType>() - minMaxVector[i].first) / (minMaxVector[i].second - minMaxVector[i].first)) * normalizationFactor + newMinValue;
   }
 }
 

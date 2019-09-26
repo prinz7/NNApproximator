@@ -66,8 +66,8 @@ void Logic::trainNetwork(const DataVector& data)
   const auto& numberOfEpochs = options.NumberOfEpochs;
   torch::optim::SGD optimizer(network->parameters(), 0.000001); // TODO fix hardcoded value
 
-//  std::random_device rd;
-//  std::mt19937 g(rd());
+  std::random_device rd;
+  std::mt19937 g(rd());
 
   auto lastMeanError = calculateMeanError(data);
   auto currentMeanError = lastMeanError;
@@ -77,7 +77,7 @@ void Logic::trainNetwork(const DataVector& data)
   int32_t numberOfDeteriorationsInRow = 0;
 
   for (size_t epoch = 1; epoch <= numberOfEpochs || continueTraining; ++epoch) {
-//    std::shuffle(randomlyShuffledData.begin(), randomlyShuffledData.end(), g);
+    std::shuffle(randomlyShuffledData.begin(), randomlyShuffledData.end(), g);
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
     auto remaining = ((elapsed / std::max(epoch - 1, 1ul)) * (numberOfEpochs - epoch + 1));
     lastMeanError = currentMeanError;
@@ -147,11 +147,17 @@ void Logic::performInteractiveMode()
     }
 
     if (currentVariable >= options.NumberOfInputVariables) {
+      Utilities::DataNormalizator::Normalize(inTensor, inputMinMax, 0.0, 1.0);
       auto output = network->forward(inTensor);
       auto dOutputTensor = output.clone();
       Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, true);
 
-      std::cout << "Neural network output: ";
+      std::cout << "Normalized input: ";
+      for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) {
+        std::cout << inTensor[i].item<TensorDataType>() << "  ";
+      }
+
+      std::cout << "\nNeural network output: ";
       for (uint32_t i = 0; i < options.NumberOfOutputVariables; ++i) {
         std::cout << dOutputTensor[i].item<TensorDataType>() << " (" << output[i].item<TensorDataType>() << ")  ";
       }
