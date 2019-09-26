@@ -15,19 +15,15 @@ bool Logic::performUserRequest(const Utilities::ProgramOptions& user_options)
     return false;
   }
 
-  auto minMax = std::make_pair(MinMaxVector(), MinMaxVector());
-  MinMaxVector& inputMinMax = minMax.first;
-  MinMaxVector& outputMinMax = minMax.second;
-
   Utilities::DataNormalizator::Normalize(*data, minMax, 0.0, 1.0);  // TODO let user control normalization
 
-  Network network{options.NumberOfInputVariables, options.NumberOfOutputVariables, std::vector<uint32_t>{4000}}; // TODO fix hardcoded value
+  network = Network{options.NumberOfInputVariables, options.NumberOfOutputVariables, std::vector<uint32_t>{4000}}; // TODO fix hardcoded value
 
   if (options.InputNetworkParameters != Utilities::DefaultValues::INPUT_NETWORK_PARAMETERS) {
     torch::load(network, options.InputNetworkParameters);
   }
 
-  trainNetwork(network, *data);
+  trainNetwork(*data);
 
   network->eval();
 
@@ -57,19 +53,23 @@ bool Logic::performUserRequest(const Utilities::ProgramOptions& user_options)
     torch::save(network, options.OutputNetworkParameters);
   }
 
+  if (options.InteractiveMode) {
+    performInteractiveMode();
+  }
+
   return true;
 }
 
-void Logic::trainNetwork(Network& network, const DataVector& data)
+void Logic::trainNetwork(const DataVector& data)
 {
   DataVector randomlyShuffledData(data);
   const auto& numberOfEpochs = options.NumberOfEpochs;
   torch::optim::SGD optimizer(network->parameters(), 0.000001); // TODO fix hardcoded value
 
-  std::random_device rd;
-  std::mt19937 g(rd());
+//  std::random_device rd;
+//  std::mt19937 g(rd());
 
-  auto lastMeanError = calculateMeanError(network, data);
+  auto lastMeanError = calculateMeanError(data);
   auto currentMeanError = lastMeanError;
   auto start = std::chrono::steady_clock::now();
 
@@ -77,13 +77,13 @@ void Logic::trainNetwork(Network& network, const DataVector& data)
   int32_t numberOfDeteriorationsInRow = 0;
 
   for (size_t epoch = 1; epoch <= numberOfEpochs || continueTraining; ++epoch) {
-    std::shuffle(randomlyShuffledData.begin(), randomlyShuffledData.end(), g);
+//    std::shuffle(randomlyShuffledData.begin(), randomlyShuffledData.end(), g);
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
     auto remaining = ((elapsed / std::max(epoch - 1, 1ul)) * (numberOfEpochs - epoch + 1));
     lastMeanError = currentMeanError;
-    currentMeanError = calculateMeanError(network, data);
+    currentMeanError = calculateMeanError(data);
 
-    if (lastMeanError - currentMeanError < 0.0) {
+    if (lastMeanError - currentMeanError < options.Epsilon) {
       ++numberOfDeteriorationsInRow;
       if (numberOfDeteriorationsInRow > 3) {
         continueTraining = false;
@@ -92,13 +92,17 @@ void Logic::trainNetwork(Network& network, const DataVector& data)
       numberOfDeteriorationsInRow = 0;
     }
 
-    if (epoch > numberOfEpochs) { // TODO fix hardcoded value
-      std::cout << "\rContinue training. Mean squared error changed from " << lastMeanError << " to " << currentMeanError << " -- epoch: " << epoch;
-      std::flush(std::cout);
-    } else {
-      std::cout << "\rEpoch " << epoch << " of " << numberOfEpochs << ". Current mean squared error: " << currentMeanError << " previous: " << lastMeanError <<
-                " -- Remaining time: " << formatDuration<std::chrono::milliseconds, std::chrono::hours, std::chrono::minutes, std::chrono::seconds>(remaining); // TODO better output + only if wanted
-      std::flush(std::cout);
+    if (options.ShowProgressDuringTraining) {
+      if (epoch > numberOfEpochs) { // TODO fix hardcoded value
+        std::cout << "\rContinue training. Mean squared error changed from " << lastMeanError << " to " << currentMeanError << " -- epoch: " << epoch;
+        std::flush(std::cout);
+      } else {
+        std::cout << "\rEpoch " << epoch << " of " << numberOfEpochs << ". Current mean squared error: " << currentMeanError << " previous: "
+                  << lastMeanError <<
+                  " -- Remaining time: " << formatDuration<std::chrono::milliseconds, std::chrono::hours, std::chrono::minutes, std::chrono::seconds>(
+          remaining); // TODO better output
+        std::flush(std::cout);
+      }
     }
 
     for (auto const& [x, y] : randomlyShuffledData) {
@@ -116,11 +120,48 @@ void Logic::trainNetwork(Network& network, const DataVector& data)
       optimizer.step();
     }
   }
+  // TODO show result only if wanted
   std::cout << "\nTraining duration: " << formatDuration<std::chrono::milliseconds, std::chrono::hours, std::chrono::minutes, std::chrono::seconds>
     (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start));
 }
 
-double Logic::calculateMeanError(Network& network, const DataVector &testData)
+void Logic::performInteractiveMode()
+{
+  std::cout << "Interactive mode activated. Quit with 'q'" << std::endl;
+  std::string input{};
+  auto inTensor = torch::zeros(options.NumberOfInputVariables, TORCH_DATA_TYPE);
+  uint32_t currentVariable = 0;
+
+  while (input != "q") {
+    std::cout << "Input variable " << currentVariable << ": ";
+    std::flush(std::cout);
+    std::cin >> input;
+
+    try {
+      TensorDataType value = std::stod(input);
+      inTensor[currentVariable++] = value;
+    } catch (std::exception const&) {
+      if (input != "q") {
+        std::cout << "'" << input << "' cannot be cast to double. Quit interactive mode with 'q'." << std::endl;
+      }
+    }
+
+    if (currentVariable >= options.NumberOfInputVariables) {
+      auto output = network->forward(inTensor);
+      auto dOutputTensor = output.clone();
+      Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, true);
+
+      std::cout << "Neural network output: ";
+      for (uint32_t i = 0; i < options.NumberOfOutputVariables; ++i) {
+        std::cout << dOutputTensor[i].item<TensorDataType>() << " (" << output[i].item<TensorDataType>() << ")  ";
+      }
+      std::cout << std::endl;
+      currentVariable = 0;
+    }
+  }
+}
+
+double Logic::calculateMeanError(const DataVector &testData)
 {
   double error = 0;
   for (auto const& [x, y] : testData) {

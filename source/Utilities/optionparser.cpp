@@ -101,6 +101,21 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
         }
         options.OutputNetworkParameters = std::string(argv[++i]);
         break;
+      case CLIParameters::Interactive:
+        options.InteractiveMode = true;
+        break;
+      case CLIParameters::Epsilon:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        try {
+          options.Epsilon = std::stod(std::string(argv[++i]));
+        } catch (std::exception const&) {
+          std::cout << "Could not parse " << std::string(argv[i]) << " to double." << std::endl;
+          return std::nullopt;
+        }
+        break;
     }
   }
 

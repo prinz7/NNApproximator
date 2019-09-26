@@ -1,4 +1,4 @@
-target_sources(TorchTest
+target_sources(NNApproximator
     PRIVATE
         torchtest.cpp
 )

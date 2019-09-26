@@ -13,12 +13,18 @@ public:
   bool performUserRequest(const Utilities::ProgramOptions& options);
 
 private:
-  void trainNetwork(Network& network, const DataVector& data);
+  void trainNetwork(const DataVector& data);
+  void performInteractiveMode();
   [[nodiscard]]
-  static double calculateMeanError(Network& network, const DataVector& testData);
+  double calculateMeanError(const DataVector& testData);
 
 private:
+  Network network {nullptr};
   Utilities::ProgramOptions options {};
+
+  std::pair<MinMaxVector, MinMaxVector> minMax = std::make_pair(MinMaxVector(), MinMaxVector());
+  MinMaxVector& inputMinMax = minMax.first;
+  MinMaxVector& outputMinMax = minMax.second;
 };
 
 }
