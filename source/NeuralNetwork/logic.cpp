@@ -76,10 +76,13 @@ void Logic::trainNetwork(const DataVector& data)
   bool continueTraining = true;
   int32_t numberOfDeteriorationsInRow = 0;
 
-  for (size_t epoch = 1; epoch <= numberOfEpochs || continueTraining; ++epoch) {
+  auto maxExecutionTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(7));  // TODO remove or use parameter
+  bool timeoutOccured = false;
+
+  for (uint32_t epoch = 1; (epoch <= numberOfEpochs || continueTraining) && !timeoutOccured; ++epoch) {
     std::shuffle(randomlyShuffledData.begin(), randomlyShuffledData.end(), g);
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
-    auto remaining = ((elapsed / std::max(epoch - 1, 1ul)) * (numberOfEpochs - epoch + 1));
+    auto remaining = ((elapsed / std::max(epoch - 1, 1u)) * (numberOfEpochs - epoch + 1));
     lastMeanError = currentMeanError;
     currentMeanError = calculateMeanError(data);
 
@@ -103,6 +106,11 @@ void Logic::trainNetwork(const DataVector& data)
           remaining); // TODO better output
         std::flush(std::cout);
       }
+    }
+
+    if (elapsed > maxExecutionTime) {
+      std::cout << "\nStop execution (timeout)." << std::endl;
+      timeoutOccured = true;
     }
 
     for (auto const& [x, y] : randomlyShuffledData) {
