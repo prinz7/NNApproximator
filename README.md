@@ -1,2 +1,29 @@
-# MachineLearningTest
-Little test repo to test some machine learning and neuronal net libraries with c++.
+# NNApproximator
+Project to test approximation of an unkown function with a neural network.
+
+To get the needed library files via git, you needed to activate Git LFS in your cloned repository.
+```
+git lfs install
+```
+
+Then pull the library files:
+```
+git lfs pull
+```
+
+#### Build project manually in terminal:
+In the cloned folder create a folder named 'build' and enter it:
+```
+mkdir build
+cd build
+```
+
+Call CMake to create the make files. You need at least CMake version 3.13:
+```
+cmake ..
+```
+
+After that you can build the program with e.g. 4 threads:
+```
+make -j4
+```
