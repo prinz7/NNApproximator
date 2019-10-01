@@ -17,7 +17,7 @@ bool Logic::performUserRequest(const Utilities::ProgramOptions& user_options)
 
   Utilities::DataNormalizator::Normalize(*data, minMax, 0.0, 1.0);  // TODO let user control normalization
 
-  network = Network{options.NumberOfInputVariables, options.NumberOfOutputVariables, std::vector<uint32_t>{4000}}; // TODO fix hardcoded value
+  network = Network{options.NumberOfInputVariables, options.NumberOfOutputVariables, std::vector<uint32_t>{500}}; // TODO fix hardcoded value
 
   if (options.InputNetworkParameters != Utilities::DefaultValues::INPUT_NETWORK_PARAMETERS) {
     torch::load(network, options.InputNetworkParameters);
@@ -38,7 +38,9 @@ bool Logic::performUserRequest(const Utilities::ProgramOptions& user_options)
 
     Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, true);
     Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, true);
+    Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
     Utilities::DataNormalizator::Denormalize(dPrediction, outputMinMax, 0.0 , 1.0, true);
+    Utilities::DataNormalizator::UnscaleLogarithmic(dPrediction);
 
     std::cout << "\nx: ";
     for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) std::cout << inputTensor[i].item<TensorDataType>() << " (" << dInputTensor[i].item<TensorDataType>() << ") ";
@@ -64,7 +66,7 @@ void Logic::trainNetwork(const DataVector& data)
 {
   DataVector randomlyShuffledData(data);
   const auto& numberOfEpochs = options.NumberOfEpochs;
-  torch::optim::SGD optimizer(network->parameters(), 0.000001); // TODO fix hardcoded value
+  torch::optim::SGD optimizer(network->parameters(), 0.00001); // TODO fix hardcoded value
 
   std::random_device rd;
   std::mt19937 g(rd());
@@ -76,11 +78,10 @@ void Logic::trainNetwork(const DataVector& data)
   bool continueTraining = true;
   int32_t numberOfDeteriorationsInRow = 0;
 
-  auto maxExecutionTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(7));  // TODO remove or use parameter
-  bool timeoutOccured = false;
+  auto maxExecutionTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::hours(24));  // TODO remove or use parameter
 
-  for (uint32_t epoch = 1; (epoch <= numberOfEpochs || continueTraining) && !timeoutOccured; ++epoch) {
-    std::shuffle(randomlyShuffledData.begin(), randomlyShuffledData.end(), g);
+  for (uint32_t epoch = 1; epoch <= numberOfEpochs || continueTraining; ++epoch) {
+//    std::shuffle(randomlyShuffledData.begin(), randomlyShuffledData.end(), g);
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
     auto remaining = ((elapsed / std::max(epoch - 1, 1u)) * (numberOfEpochs - epoch + 1));
     lastMeanError = currentMeanError;
@@ -110,7 +111,7 @@ void Logic::trainNetwork(const DataVector& data)
 
     if (elapsed > maxExecutionTime) {
       std::cout << "\nStop execution (timeout)." << std::endl;
-      timeoutOccured = true;
+      break;
     }
 
     for (auto const& [x, y] : randomlyShuffledData) {

@@ -29,9 +29,9 @@ torch::Tensor NetworkImpl::forward(torch::Tensor x)
 {
 //  x = torch::dropout(torch::sigmoid(layers[0]->forward(x)), 0.2, is_training());
   for (size_t i = 0; i < layers.size() - 1; ++i) {
-    x = torch::sigmoid(layers[i]->forward(x));
+    x = torch::relu(layers[i]->forward(x));
   }
-  x = torch::sigmoid(layers[layers.size() - 1]->forward(x));
+  x = torch::relu(layers[layers.size() - 1]->forward(x));
 
 //  x = torch::sigmoid(fc1->forward(x));
 //  x = torch::sigmoid(fc2->forward(x));

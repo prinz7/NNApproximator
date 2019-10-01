@@ -11,11 +11,13 @@ void DataNormalizator::Normalize(DataVector& data, std::pair<MinMaxVector, MinMa
   auto numberOfOutputNodes = data.front().second.size(0);
 
   // Initialize minMaxVectors:
-  inputMinMax = MinMaxVector(numberOfInputNodes, std::make_pair(std::numeric_limits<TensorDataType>::max(), std::numeric_limits<TensorDataType>::min()));
-  outputMinMax = MinMaxVector(numberOfOutputNodes, std::make_pair(std::numeric_limits<TensorDataType>::max(), std::numeric_limits<TensorDataType>::min()));
+  inputMinMax = MinMaxVector(numberOfInputNodes, std::make_pair(std::numeric_limits<TensorDataType>::max(), std::numeric_limits<TensorDataType>::lowest()));
+  outputMinMax = MinMaxVector(numberOfOutputNodes, std::make_pair(std::numeric_limits<TensorDataType>::max(), std::numeric_limits<TensorDataType>::lowest()));
 
   // Calculate min and max:
-  for (auto const& [inputTensor, outputTensor] : data) {
+  for (auto& [inputTensor, outputTensor] : data) {
+    ScaleLogarithmic(outputTensor);
+
     for (int64_t i = 0; i < numberOfInputNodes; ++i) {
       inputMinMax[i].first = std::min(inputMinMax[i].first, inputTensor[i].item<TensorDataType>());
       inputMinMax[i].second = std::max(inputMinMax[i].second, inputTensor[i].item<TensorDataType>());
@@ -54,6 +56,23 @@ void DataNormalizator::Denormalize(torch::Tensor& tensor, MinMaxVector const& mi
       tensor[i] = std::max(oldMinValue, (std::min(oldMaxValue, tensor[i].item<TensorDataType>())));
     }
     tensor[i] = (((tensor[i] - oldMinValue) / normalizationFactor) * (minMaxVector[i].second - minMaxVector[i].first)) + minMaxVector[i].first;
+  }
+}
+
+void DataNormalizator::ScaleLogarithmic(torch::Tensor& data)
+{
+  for (int64_t i = 0; i < data.size(0); ++i) {
+    if (data[i].item<TensorDataType>() <= 0) {
+      data[i] = 0.00000000001;
+    }
+    data[i] = std::log(data[i].item<TensorDataType>());
+  }
+}
+
+void DataNormalizator::UnscaleLogarithmic(torch::Tensor& data)
+{
+  for (int64_t i = 0; i < data.size(0); ++i) {
+    data[i] = std::exp(data[i].item<TensorDataType>());
   }
 }
 
