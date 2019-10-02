@@ -2,6 +2,12 @@
 
 namespace Utilities {
 
+namespace {
+
+const TensorDataType MINIMUM_ALLOWED_VALUE = 0.000'000'000'01;
+
+}
+
 void DataNormalizator::Normalize(DataVector& data, std::pair<MinMaxVector, MinMaxVector>& minMaxVectors, TensorDataType const newMinValue, TensorDataType const newMaxValue)
 {
   if (data.empty()) return;
@@ -57,13 +63,15 @@ void DataNormalizator::Denormalize(torch::Tensor& tensor, MinMaxVector const& mi
     }
     tensor[i] = (((tensor[i] - oldMinValue) / normalizationFactor) * (minMaxVector[i].second - minMaxVector[i].first)) + minMaxVector[i].first;
   }
+
+  UnscaleLogarithmic(tensor);
 }
 
 void DataNormalizator::ScaleLogarithmic(torch::Tensor& data)
 {
   for (int64_t i = 0; i < data.size(0); ++i) {
     if (data[i].item<TensorDataType>() <= 0) {
-      data[i] = 0.00000000001;
+      data[i] = MINIMUM_ALLOWED_VALUE;
     }
     data[i] = std::log(data[i].item<TensorDataType>());
   }

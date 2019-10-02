@@ -16,10 +16,7 @@ private:
   void addLayer(size_t layerNumber, uint32_t numberOfInputNodes, uint32_t numberOfOutputNodes);
 
 private:
-  std::vector<torch::nn::Linear> layers{};
-//  torch::nn::Linear fc1{nullptr};
-//  torch::nn::Linear fc2{nullptr};
-//  torch::nn::Linear fc3{nullptr};
+  std::vector<torch::nn::Sequential> layers{};
 };
 
 TORCH_MODULE(Network);

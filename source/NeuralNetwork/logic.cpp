@@ -38,9 +38,7 @@ bool Logic::performUserRequest(const Utilities::ProgramOptions& user_options)
 
     Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, true);
     Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, true);
-    Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
     Utilities::DataNormalizator::Denormalize(dPrediction, outputMinMax, 0.0 , 1.0, true);
-    Utilities::DataNormalizator::UnscaleLogarithmic(dPrediction);
 
     std::cout << "\nx: ";
     for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) std::cout << inputTensor[i].item<TensorDataType>() << " (" << dInputTensor[i].item<TensorDataType>() << ") ";
@@ -66,7 +64,7 @@ void Logic::trainNetwork(const DataVector& data)
 {
   DataVector randomlyShuffledData(data);
   const auto& numberOfEpochs = options.NumberOfEpochs;
-  torch::optim::SGD optimizer(network->parameters(), 0.00001); // TODO fix hardcoded value
+  torch::optim::SGD optimizer(network->parameters(), 0.000001); // TODO fix hardcoded value
 
   std::random_device rd;
   std::mt19937 g(rd());

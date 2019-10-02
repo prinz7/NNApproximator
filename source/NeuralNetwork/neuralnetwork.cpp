@@ -18,30 +18,19 @@ NetworkImpl::NetworkImpl(const uint32_t numberOfInputNodes, const uint32_t numbe
   }
 }
 
-//NetworkImpl::NetworkImpl()
-//{
-//  fc1 = register_module("fc1", torch::nn::Linear(1, 100));
-//  fc2 = register_module("fc2", torch::nn::Linear(100, 100));
-//  fc3 = register_module("fc3", torch::nn::Linear(100, 1));
-//}
-
 torch::Tensor NetworkImpl::forward(torch::Tensor x)
 {
-//  x = torch::dropout(torch::sigmoid(layers[0]->forward(x)), 0.2, is_training());
-  for (size_t i = 0; i < layers.size() - 1; ++i) {
-    x = torch::relu(layers[i]->forward(x));
+  for (auto& layer : layers) {
+    x = layer->forward(x);
   }
-  x = torch::relu(layers[layers.size() - 1]->forward(x));
 
-//  x = torch::sigmoid(fc1->forward(x));
-//  x = torch::sigmoid(fc2->forward(x));
-//  x = (fc3->forward(x));
   return x;
 }
 
 void NetworkImpl::addLayer(const size_t layerNumber, const uint32_t numberOfInputNodes, const uint32_t numberOfOutputNodes)
 {
-  layers.emplace_back(register_module("layer" + std::to_string(layerNumber), torch::nn::Linear(numberOfInputNodes, numberOfOutputNodes)));
+  layers.emplace_back(register_module("layer" + std::to_string(layerNumber),
+    torch::nn::Sequential(torch::nn::Linear(numberOfInputNodes, numberOfOutputNodes), torch::nn::Functional(torch::leaky_relu, 0.2))));
   layers[layerNumber]->to(TORCH_DATA_TYPE);
 }
 
