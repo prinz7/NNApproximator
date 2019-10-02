@@ -22,8 +22,6 @@ void DataNormalizator::Normalize(DataVector& data, std::pair<MinMaxVector, MinMa
 
   // Calculate min and max:
   for (auto& [inputTensor, outputTensor] : data) {
-    ScaleLogarithmic(outputTensor);
-
     for (int64_t i = 0; i < numberOfInputNodes; ++i) {
       inputMinMax[i].first = std::min(inputMinMax[i].first, inputTensor[i].item<TensorDataType>());
       inputMinMax[i].second = std::max(inputMinMax[i].second, inputTensor[i].item<TensorDataType>());
@@ -63,14 +61,12 @@ void DataNormalizator::Denormalize(torch::Tensor& tensor, MinMaxVector const& mi
     }
     tensor[i] = (((tensor[i] - oldMinValue) / normalizationFactor) * (minMaxVector[i].second - minMaxVector[i].first)) + minMaxVector[i].first;
   }
-
-  UnscaleLogarithmic(tensor);
 }
 
 void DataNormalizator::ScaleLogarithmic(torch::Tensor& data)
 {
   for (int64_t i = 0; i < data.size(0); ++i) {
-    if (data[i].item<TensorDataType>() <= 0) {
+    if (data[i].item<TensorDataType>() < MINIMUM_ALLOWED_VALUE) {
       data[i] = MINIMUM_ALLOWED_VALUE;
     }
     data[i] = std::log(data[i].item<TensorDataType>());
