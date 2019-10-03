@@ -10,13 +10,15 @@ class Logic
 {
 public:
   [[nodiscard]]
-  bool performUserRequest(const Utilities::ProgramOptions& options);
+  bool performUserRequest(Utilities::ProgramOptions const& options);
 
 private:
-  void trainNetwork(const DataVector& data);
+  void trainNetwork(DataVector const& data);
   void performInteractiveMode();
   [[nodiscard]]
-  double calculateMeanError(const DataVector& testData);
+  double calculateMeanError(DataVector const& testData);
+  [[nodiscard]]
+  double calculateR2Score(DataVector const& testData);
 
 private:
   Network network {nullptr};

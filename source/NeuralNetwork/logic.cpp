@@ -7,7 +7,7 @@
 
 namespace NeuralNetwork {
 
-bool Logic::performUserRequest(const Utilities::ProgramOptions& user_options)
+bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
 {
   options = user_options;
   auto data = Utilities::FileParser::ParseInputFile(options.InputDataFilePath, options.NumberOfInputVariables, options.NumberOfOutputVariables);
@@ -31,6 +31,8 @@ bool Logic::performUserRequest(const Utilities::ProgramOptions& user_options)
   network->eval();
 
   // Output behaviour of network: // TODO user parametrization
+  std::cout << "R2 score: " << calculateR2Score(*data) << std::endl;
+
   for (auto const& [inputTensor, outputTensor] : *data) {
     auto prediction = network->forward(inputTensor);
     auto loss = torch::mse_loss(prediction, outputTensor);
@@ -134,7 +136,7 @@ void Logic::trainNetwork(const DataVector& data)
   }
   // TODO show result only if wanted
   std::cout << "\nTraining duration: " << formatDuration<std::chrono::milliseconds, std::chrono::hours, std::chrono::minutes, std::chrono::seconds>
-    (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start));
+    (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start)) << std::endl;
 }
 
 void Logic::performInteractiveMode()
@@ -180,7 +182,7 @@ void Logic::performInteractiveMode()
   }
 }
 
-double Logic::calculateMeanError(const DataVector &testData)
+double Logic::calculateMeanError(DataVector const& testData)
 {
   double error = 0;
   for (auto const& [x, y] : testData) {
@@ -189,6 +191,31 @@ double Logic::calculateMeanError(const DataVector &testData)
     error += loss.item<double>();
   }
   return error / testData.size();
+}
+
+double Logic::calculateR2Score(DataVector const& testData)
+{
+  if (testData[0].second.size(0) > 1) {
+    std::cout << "R2 score not implemented for multidimensional output." << std::endl;
+    return 0.0;
+  }
+  double SQE = 0;
+  double SQT = 0;
+
+  TensorDataType y_cross = 0;
+  for (auto const& [x, y] : testData) {
+    y_cross += y[0].item<TensorDataType>();
+  }
+  y_cross /= testData.size();
+
+  for (auto const& [x, y] : testData) {
+    auto prediction = network->forward(x);
+
+    SQE += std::pow(prediction[0].item<TensorDataType>() - y_cross, 2);
+    SQT += std::pow(y[0].item<TensorDataType>() - y_cross, 2);
+  }
+
+  return SQE / SQT;
 }
 
 }
