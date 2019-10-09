@@ -16,6 +16,7 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   }
 
   for (auto& [inputTensor, outputTensor] : *dataOpt) {
+    (void) inputTensor;
     Utilities::DataNormalizator::ScaleLogarithmic(outputTensor);
   }
   Utilities::DataNormalizator::Normalize(*dataOpt, minMax, 0.0, 1.0);  // TODO let user control normalization
@@ -202,6 +203,7 @@ double Logic::calculateR2Score(DataVector const& testData)
 
   TensorDataType y_cross = 0;
   for (auto const& [x, y] : testData) {
+    (void) x;
     y_cross += y[0].item<TensorDataType>();
   }
   y_cross /= testData.size();
