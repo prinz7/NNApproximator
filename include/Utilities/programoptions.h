@@ -18,6 +18,8 @@ const uint32_t NUMBER_OF_EPOCHS = 10;
 const bool     SHOW_PROGRESS_DURING_TRAINING = true;
 const bool     INTERACTIVE_MODE = false;
 const double   EPSILON = 1.0;
+const bool     VALIDATE_AFTER_TRAINING = false;
+const double   VALIDATION_PERCENTAGE = 30.0;
 
 const std::string CLI_HELP_TEXT = {
   std::string("List of possible commandline parameters:\n") +
@@ -30,7 +32,9 @@ const std::string CLI_HELP_TEXT = {
   "--inWeights <filepath>             : If set loads the weights in the file for the network in the initialization phase.\n" +
   "--outWeights <filepath>            : If set saves the weights of the network to the specified file after the training phase.\n" +
   "--interactive                      : If set activated the interactive mode after the training to test user input on the neural network.\n" +
-  "--epsilon <double>                 : If set continues training after the last epoch until the improvement of the mean squarred error is less than the set epsilon. Default: " + std::to_string(EPSILON) + "\n"
+  "--epsilon <double>                 : If set continues training after the last epoch until the improvement of the mean squarred error is less than the set epsilon. Default: " + std::to_string(EPSILON) + "\n" +
+  "--validate                         : If set splits the data set in a training and validation set. After the training the network is tested with the validation set.\n" +
+  "--validatePercentage <double>      : Sets the percentage of the data, which is only used for validation and not for training. Value should be between 0 and 100. Default: " + std::to_string(VALIDATION_PERCENTAGE) + "\n"
 };
 
 }
@@ -38,25 +42,27 @@ const std::string CLI_HELP_TEXT = {
 enum class CLIParameters
 {
   Help, InputFilePath, NumberOfInputVariabes, NumberOfOutputVariables, NumberOfEpochs, ShowProgressDuringTraining, InputNetworkParameters,
-  OutputNetworkParameters, Interactive, Epsilon
+  OutputNetworkParameters, Interactive, Epsilon, Validate, ValidatePercentage
 };
 
 const std::map<std::string, CLIParameters> CLIParameterMap {
-  {"--help",         CLIParameters::Help},
-  {"-h",             CLIParameters::Help},
-  {"--input",        CLIParameters::InputFilePath},
-  {"-i",             CLIParameters::InputFilePath},
-  {"--numberIn",     CLIParameters::NumberOfInputVariabes},
-  {"-ni",            CLIParameters::NumberOfInputVariabes},
-  {"--numberOut",    CLIParameters::NumberOfOutputVariables},
-  {"-no",            CLIParameters::NumberOfOutputVariables},
-  {"--epochs",       CLIParameters::NumberOfEpochs},
-  {"-e",             CLIParameters::NumberOfEpochs},
-  {"--showProgress", CLIParameters::ShowProgressDuringTraining},
-  {"--inWeights",    CLIParameters::InputNetworkParameters},
-  {"--outWeights",   CLIParameters::OutputNetworkParameters},
-  {"--interactive",  CLIParameters::Interactive},
-  {"--epsilon",      CLIParameters::Epsilon}
+  {"--help",              CLIParameters::Help},
+  {"-h",                  CLIParameters::Help},
+  {"--input",             CLIParameters::InputFilePath},
+  {"-i",                  CLIParameters::InputFilePath},
+  {"--numberIn",          CLIParameters::NumberOfInputVariabes},
+  {"-ni",                 CLIParameters::NumberOfInputVariabes},
+  {"--numberOut",         CLIParameters::NumberOfOutputVariables},
+  {"-no",                 CLIParameters::NumberOfOutputVariables},
+  {"--epochs",            CLIParameters::NumberOfEpochs},
+  {"-e",                  CLIParameters::NumberOfEpochs},
+  {"--showProgress",      CLIParameters::ShowProgressDuringTraining},
+  {"--inWeights",         CLIParameters::InputNetworkParameters},
+  {"--outWeights",        CLIParameters::OutputNetworkParameters},
+  {"--interactive",       CLIParameters::Interactive},
+  {"--epsilon",           CLIParameters::Epsilon},
+  {"--validate",          CLIParameters::Validate},
+  {"--validatePercentage",CLIParameters::ValidatePercentage}
 };
 
 class ProgramOptions
@@ -71,6 +77,8 @@ public:
   bool     ShowProgressDuringTraining { DefaultValues::SHOW_PROGRESS_DURING_TRAINING };
   bool     InteractiveMode {            DefaultValues::INTERACTIVE_MODE };
   double   Epsilon {                    DefaultValues::EPSILON };
+  bool     ValidateAfterTraining {      DefaultValues::VALIDATE_AFTER_TRAINING };
+  double   ValidationPercentage {       DefaultValues::VALIDATION_PERCENTAGE };
 };
 
 }

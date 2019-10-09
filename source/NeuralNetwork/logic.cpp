@@ -10,15 +10,15 @@ namespace NeuralNetwork {
 bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
 {
   options = user_options;
-  auto data = Utilities::FileParser::ParseInputFile(options.InputDataFilePath, options.NumberOfInputVariables, options.NumberOfOutputVariables);
-  if (!data) {
+  auto dataOpt = Utilities::FileParser::ParseInputFile(options.InputDataFilePath, options.NumberOfInputVariables, options.NumberOfOutputVariables);
+  if (!dataOpt) {
     return false;
   }
 
-  for (auto& [inputTensor, outputTensor] : *data) {
+  for (auto& [inputTensor, outputTensor] : *dataOpt) {
     Utilities::DataNormalizator::ScaleLogarithmic(outputTensor);
   }
-  Utilities::DataNormalizator::Normalize(*data, minMax, 0.0, 1.0);  // TODO let user control normalization
+  Utilities::DataNormalizator::Normalize(*dataOpt, minMax, 0.0, 1.0);  // TODO let user control normalization
 
   network = Network{options.NumberOfInputVariables, options.NumberOfOutputVariables, std::vector<uint32_t>{500}}; // TODO fix hardcoded value
 
@@ -26,34 +26,32 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     torch::load(network, options.InputNetworkParameters);
   }
 
-  trainNetwork(*data);
+  std::pair<DataVector, DataVector> data;
+
+  if (options.ValidateAfterTraining) {
+    data = splitData(*dataOpt, 100.0 - options.ValidationPercentage);
+  } else {
+    data = std::make_pair(*dataOpt, DataVector());
+  }
+
+  trainNetwork(data.first);
 
   network->eval();
 
   // Output behaviour of network: // TODO user parametrization
-  std::cout << "R2 score: " << calculateR2Score(*data) << std::endl;
+  if (options.ValidateAfterTraining) {
+    std::cout << "R2 score (training): " << calculateR2Score(data.first) << std::endl;
+    std::cout << "R2 score (validation): " << calculateR2Score(data.second) << std::endl;
+  }
+  std::cout << "R2 score (all): " << calculateR2Score(*dataOpt) << std::endl;
 
-  for (auto const& [inputTensor, outputTensor] : *data) {
-    auto prediction = network->forward(inputTensor);
-    auto loss = torch::mse_loss(prediction, outputTensor);
-
-    torch::Tensor dInputTensor = inputTensor.clone();
-    torch::Tensor dOutputTensor = outputTensor.clone();
-    torch::Tensor dPrediction = prediction.clone();
-
-    Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, true);
-    Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, true);
-    Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
-    Utilities::DataNormalizator::Denormalize(dPrediction, outputMinMax, 0.0 , 1.0, true);
-    Utilities::DataNormalizator::UnscaleLogarithmic(dPrediction);
-
-    std::cout << "\nx: ";
-    for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) std::cout << inputTensor[i].item<TensorDataType>() << " (" << dInputTensor[i].item<TensorDataType>() << ") ";
-    std::cout << "\ny: ";
-    for (uint32_t i = 0; i < options.NumberOfOutputVariables; ++i) std::cout << outputTensor[i].item<TensorDataType>() << " (" << dOutputTensor[i].item<TensorDataType>() << ") ";
-    std::cout << "\nprediction: ";
-    for (uint32_t i = 0; i < options.NumberOfOutputVariables; ++i) std::cout << prediction[i].item<TensorDataType>() << " (" << dPrediction[i].item<TensorDataType>() << ") ";
-    std::cout << "\nloss: " << loss.item<double>() << std::endl;
+  if (options.ValidateAfterTraining) {
+    std::cout << "\n Training set:" << std::endl;
+    outputBehaviour(data.first);
+    std::cout << "\n Validation set:" << std::endl;
+    outputBehaviour(data.second);
+  } else {
+    outputBehaviour(*dataOpt);
   }
 
   if (options.OutputNetworkParameters != Utilities::DefaultValues::OUTPUT_NETWORK_PARAMETERS) {
@@ -216,6 +214,55 @@ double Logic::calculateR2Score(DataVector const& testData)
   }
 
   return SQE / SQT;
+}
+
+std::pair<DataVector, DataVector> Logic::splitData(DataVector const& inputData, double const trainingPercentage) const
+{
+  if (trainingPercentage == 0) {
+    return std::make_pair(DataVector(), inputData);
+  }
+  DataVector trainingData{};
+  DataVector validationData{};
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<double> dis(0.0, 100.0);
+
+  for (auto const& entry : inputData) {
+    if (dis(gen) <= trainingPercentage) {
+      trainingData.push_back(entry);
+    } else {
+      validationData.push_back(entry);
+    }
+  }
+
+  return std::make_pair(trainingData, validationData);
+}
+
+void Logic::outputBehaviour(DataVector const& data)
+{
+  for (auto const& [inputTensor, outputTensor] : data) {
+    auto prediction = network->forward(inputTensor);
+    auto loss = torch::mse_loss(prediction, outputTensor);
+
+    torch::Tensor dInputTensor = inputTensor.clone();
+    torch::Tensor dOutputTensor = outputTensor.clone();
+    torch::Tensor dPrediction = prediction.clone();
+
+    Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, true);
+    Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, true);
+    Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
+    Utilities::DataNormalizator::Denormalize(dPrediction, outputMinMax, 0.0 , 1.0, true);
+    Utilities::DataNormalizator::UnscaleLogarithmic(dPrediction);
+
+    std::cout << "\nx: ";
+    for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) std::cout << inputTensor[i].item<TensorDataType>() << " (" << dInputTensor[i].item<TensorDataType>() << ") ";
+    std::cout << "\ny: ";
+    for (uint32_t i = 0; i < options.NumberOfOutputVariables; ++i) std::cout << outputTensor[i].item<TensorDataType>() << " (" << dOutputTensor[i].item<TensorDataType>() << ") ";
+    std::cout << "\nprediction: ";
+    for (uint32_t i = 0; i < options.NumberOfOutputVariables; ++i) std::cout << prediction[i].item<TensorDataType>() << " (" << dPrediction[i].item<TensorDataType>() << ") ";
+    std::cout << "\nloss: " << loss.item<double>() << std::endl;
+  }
 }
 
 }

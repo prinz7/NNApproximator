@@ -116,6 +116,21 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
           return std::nullopt;
         }
         break;
+      case CLIParameters::Validate:
+        options.ValidateAfterTraining = true;
+        break;
+      case CLIParameters::ValidatePercentage:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        try {
+          options.ValidationPercentage = std::stod(std::string(argv[++i]));
+        } catch (std::exception const&) {
+          std::cout << "Could not parse " << std::string(argv[i]) << " to double." << std::endl;
+          return std::nullopt;
+        }
+        break;
     }
   }
 
