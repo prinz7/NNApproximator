@@ -24,6 +24,7 @@ std::optional<DataVector> FileParser::ParseInputFile(const std::string& path, ui
   // TODO: Use Header of input file
 
   while (std::getline(inputFile, line)) {
+    line.erase (std::remove(line.begin(), line.end(), ','), line.end());  // remove ',' from string
     std::istringstream iss(line);
     TensorDataType value;
 
