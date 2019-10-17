@@ -20,6 +20,8 @@ private:
   [[nodiscard]]
   double calculateR2Score(DataVector const& testData);
   [[nodiscard]]
+  double calculateR2ScoreAlternate(DataVector const& testData);
+  [[nodiscard]]
   std::pair<DataVector, DataVector> splitData(DataVector const& inputData, double trainingPercentage) const;
   void outputBehaviour(DataVector const& data);
 
