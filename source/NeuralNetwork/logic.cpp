@@ -15,10 +15,10 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     return false;
   }
 
-  for (auto& [inputTensor, outputTensor] : *dataOpt) {
-    (void) inputTensor;
-    Utilities::DataNormalizator::ScaleLogarithmic(outputTensor);
-  }
+//  for (auto& [inputTensor, outputTensor] : *dataOpt) {
+//    (void) inputTensor;
+//    Utilities::DataNormalizator::ScaleLogarithmic(outputTensor);
+//  }
   Utilities::DataNormalizator::Normalize(*dataOpt, minMax, 0.0, 1.0);  // TODO let user control normalization
 
   network = Network{options.NumberOfInputVariables, options.NumberOfOutputVariables, std::vector<uint32_t>{500}}; // TODO fix hardcoded value
@@ -164,7 +164,7 @@ void Logic::performInteractiveMode()
       auto output = network->forward(inTensor);
       auto dOutputTensor = output.clone();
       Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, true);
-      Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
+//      Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
 
       std::cout << "Normalized input: ";
       for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) {
@@ -253,9 +253,9 @@ void Logic::outputBehaviour(DataVector const& data)
 
     Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, true);
     Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, true);
-    Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
+//    Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
     Utilities::DataNormalizator::Denormalize(dPrediction, outputMinMax, 0.0 , 1.0, true);
-    Utilities::DataNormalizator::UnscaleLogarithmic(dPrediction);
+//    Utilities::DataNormalizator::UnscaleLogarithmic(dPrediction);
 
     std::cout << "\nx: ";
     for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) std::cout << inputTensor[i].item<TensorDataType>() << " (" << dInputTensor[i].item<TensorDataType>() << ") ";
