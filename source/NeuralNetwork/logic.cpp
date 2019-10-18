@@ -10,15 +10,16 @@ namespace NeuralNetwork {
 bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
 {
   options = user_options;
-  auto dataOpt = Utilities::FileParser::ParseInputFile(options.InputDataFilePath, options.NumberOfInputVariables, options.NumberOfOutputVariables);
+  auto dataOpt = Utilities::FileParser::ParseInputFile(options.InputDataFilePath, options.NumberOfInputVariables,
+    options.NumberOfOutputVariables, inputFileHeader);
   if (!dataOpt) {
     return false;
   }
 
-  for (auto& [inputTensor, outputTensor] : *dataOpt) {
-    (void) inputTensor;
+//  for (auto& [inputTensor, outputTensor] : *dataOpt) {
+//    (void) inputTensor;
 //    Utilities::DataNormalizator::ScaleLogarithmic(outputTensor);
-  }
+//  }
   Utilities::DataNormalizator::Normalize(*dataOpt, minMax, 0.0, 1.0);  // TODO let user control normalization
 
   network = Network{options.NumberOfInputVariables, options.NumberOfOutputVariables, std::vector<uint32_t>{500, 500}}; // TODO fix hardcoded value
@@ -41,6 +42,10 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
 
   if (options.OutputNetworkParameters != Utilities::DefaultValues::OUTPUT_NETWORK_PARAMETERS) {
     torch::save(network, options.OutputNetworkParameters);
+  }
+
+  if (options.OutputValuesFilePath != Utilities::DefaultValues::OUTPUT_VALUE) {
+    saveValuesToFile(*dataOpt, options.OutputValuesFilePath);
   }
 
   if (options.OutputDiffFilePath != Utilities::DefaultValues::OUTPUT_DIFF) {
@@ -310,6 +315,24 @@ void Logic::outputBehaviour(DataVector const& data)
   }
 }
 
+void Logic::saveValuesToFile(DataVector const& data, std::string const& path)
+{
+  DataVector values(data.size());
+
+  size_t i = 0;
+  for (auto const& [inputTensor, outputTensor] : data) {
+    auto prediction = network->forward(inputTensor);
+    torch::Tensor dInputTensor = inputTensor.clone();
+
+    Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, false);
+    Utilities::DataNormalizator::Denormalize(prediction, outputMinMax, 0.0 , 1.0, false);
+
+    values[i++] = std::make_pair(dInputTensor, prediction);
+  }
+
+  Utilities::FileParser::SaveData(values, path, inputFileHeader);
+}
+
 void Logic::saveDiffToFile(DataVector const& data, std::string const& path)
 {
   DataVector diff(data.size());
@@ -317,10 +340,17 @@ void Logic::saveDiffToFile(DataVector const& data, std::string const& path)
   size_t i = 0;
   for (auto const& [inputTensor, outputTensor] : data) {
     auto prediction = network->forward(inputTensor);
-    diff[i++] = std::make_pair(inputTensor, calculateDiff(outputTensor, prediction));
+    torch::Tensor dInputTensor = inputTensor.clone();
+    torch::Tensor dOutputTensor = outputTensor.clone();
+
+    Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, false);
+    Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, false);
+    Utilities::DataNormalizator::Denormalize(prediction, outputMinMax, 0.0 , 1.0, false);
+
+    diff[i++] = std::make_pair(dInputTensor, calculateDiff(dOutputTensor, prediction));
   }
 
-  Utilities::FileParser::SaveData(diff, path);
+  Utilities::FileParser::SaveData(diff, path, inputFileHeader);
 }
 
 torch::Tensor Logic::calculateDiff(torch::Tensor const& input1, torch::Tensor const& input2) const
