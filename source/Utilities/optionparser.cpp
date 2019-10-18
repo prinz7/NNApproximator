@@ -35,7 +35,7 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
         }
         options.InputDataFilePath = std::string(argv[++i]);
         break;
-      case CLIParameters::NumberOfInputVariabes:
+      case CLIParameters::NumberOfInputVariables:
         if (i + 1 >= argc) {
           std::cout << "Not enough parameters after " << inputString << std::endl;
           return std::nullopt;
@@ -130,6 +130,23 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
           std::cout << "Could not parse " << std::string(argv[i]) << " to double." << std::endl;
           return std::nullopt;
         }
+        break;
+      case CLIParameters::OutValues:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        options.OutputValuesFilePath = std::string(argv[++i]);
+        break;
+      case CLIParameters::OutDiff:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        options.OutputDiffFilePath = std::string(argv[++i]);
+        break;
+      case CLIParameters::PrintBehaviour:
+        options.PrintBehaviour = true;
         break;
     }
   }

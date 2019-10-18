@@ -20,6 +20,9 @@ const bool     INTERACTIVE_MODE = false;
 const double   EPSILON = 1.0;
 const bool     VALIDATE_AFTER_TRAINING = false;
 const double   VALIDATION_PERCENTAGE = 30.0;
+const FilePath OUTPUT_VALUE = {};
+const FilePath OUTPUT_DIFF = {};
+const bool     PRINT_BEHAVIOUR = false;
 
 const std::string CLI_HELP_TEXT = {
   std::string("List of possible commandline parameters:\n") +
@@ -34,15 +37,18 @@ const std::string CLI_HELP_TEXT = {
   "--interactive                      : If set activated the interactive mode after the training to test user input on the neural network.\n" +
   "--epsilon <double>                 : If set continues training after the last epoch until the improvement of the mean squarred error is less than the set epsilon. Default: " + std::to_string(EPSILON) + "\n" +
   "--validate                         : If set splits the data set in a training and validation set. After the training the network is tested with the validation set.\n" +
-  "--validatePercentage <double>      : Sets the percentage of the data, which is only used for validation and not for training. Value should be between 0 and 100. Default: " + std::to_string(VALIDATION_PERCENTAGE) + "\n"
+  "--validatePercentage <double>      : Sets the percentage of the data, which is only used for validation and not for training. Value should be between 0 and 100. Default: " + std::to_string(VALIDATION_PERCENTAGE) + "\n" +
+  "--outValues <filepath>             : If set saves the output of the neural network for all input values to the specified file." +
+  "--outDiff <filepath>               : If set saves the difference of the output of the neural network and given input values to the specified file." +
+  "--printBehaviour                   : If set outputs the behaviour of the neural network to the console for the given input values."
 };
 
 }
 
 enum class CLIParameters
 {
-  Help, InputFilePath, NumberOfInputVariabes, NumberOfOutputVariables, NumberOfEpochs, ShowProgressDuringTraining, InputNetworkParameters,
-  OutputNetworkParameters, Interactive, Epsilon, Validate, ValidatePercentage
+  Help, InputFilePath, NumberOfInputVariables, NumberOfOutputVariables, NumberOfEpochs, ShowProgressDuringTraining, InputNetworkParameters,
+  OutputNetworkParameters, Interactive, Epsilon, Validate, ValidatePercentage, OutValues, OutDiff, PrintBehaviour
 };
 
 const std::map<std::string, CLIParameters> CLIParameterMap {
@@ -50,8 +56,8 @@ const std::map<std::string, CLIParameters> CLIParameterMap {
   {"-h",                  CLIParameters::Help},
   {"--input",             CLIParameters::InputFilePath},
   {"-i",                  CLIParameters::InputFilePath},
-  {"--numberIn",          CLIParameters::NumberOfInputVariabes},
-  {"-ni",                 CLIParameters::NumberOfInputVariabes},
+  {"--numberIn",          CLIParameters::NumberOfInputVariables},
+  {"-ni",                 CLIParameters::NumberOfInputVariables},
   {"--numberOut",         CLIParameters::NumberOfOutputVariables},
   {"-no",                 CLIParameters::NumberOfOutputVariables},
   {"--epochs",            CLIParameters::NumberOfEpochs},
@@ -62,7 +68,10 @@ const std::map<std::string, CLIParameters> CLIParameterMap {
   {"--interactive",       CLIParameters::Interactive},
   {"--epsilon",           CLIParameters::Epsilon},
   {"--validate",          CLIParameters::Validate},
-  {"--validatePercentage",CLIParameters::ValidatePercentage}
+  {"--validatePercentage",CLIParameters::ValidatePercentage},
+  {"--outValues",         CLIParameters::OutValues},
+  {"--outDiff",           CLIParameters::OutDiff},
+  {"--printBehaviour",    CLIParameters::PrintBehaviour}
 };
 
 class ProgramOptions
@@ -79,6 +88,9 @@ public:
   double   Epsilon {                    DefaultValues::EPSILON };
   bool     ValidateAfterTraining {      DefaultValues::VALIDATE_AFTER_TRAINING };
   double   ValidationPercentage {       DefaultValues::VALIDATION_PERCENTAGE };
+  FilePath OutputValuesFilePath {       DefaultValues::OUTPUT_VALUE};
+  FilePath OutputDiffFilePath {         DefaultValues::OUTPUT_DIFF};
+  bool     PrintBehaviour {             DefaultValues::PRINT_BEHAVIOUR};
 };
 
 }

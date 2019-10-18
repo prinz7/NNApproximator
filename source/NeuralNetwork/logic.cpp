@@ -17,7 +17,7 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
 
   for (auto& [inputTensor, outputTensor] : *dataOpt) {
     (void) inputTensor;
-    Utilities::DataNormalizator::ScaleLogarithmic(outputTensor);
+//    Utilities::DataNormalizator::ScaleLogarithmic(outputTensor);
   }
   Utilities::DataNormalizator::Normalize(*dataOpt, minMax, 0.0, 1.0);  // TODO let user control normalization
 
@@ -27,8 +27,6 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     torch::load(network, options.InputNetworkParameters);
   }
 
-  saveDiffToFile(*dataOpt, options.InputDataFilePath + "_DIFF");
-  exit(9);
   std::pair<DataVector, DataVector> data;
 
   if (options.ValidateAfterTraining) {
@@ -41,27 +39,33 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
 
   network->eval();
 
-  // Output behaviour of network: // TODO user parametrization
-  if (options.ValidateAfterTraining) {
-    std::cout << "R2 score (training): " << calculateR2Score(data.first) << std::endl;
-    std::cout << "R2 score alternate (training): " << calculateR2ScoreAlternate(data.first) << std::endl;
-    std::cout << "R2 score (validation): " << calculateR2Score(data.second) << std::endl;
-    std::cout << "R2 score alternate (validation): " << calculateR2ScoreAlternate(data.second) << std::endl;
-  }
-  std::cout << "R2 score (all): " << calculateR2Score(*dataOpt) << std::endl;
-  std::cout << "R2 score alternate (all): " << calculateR2ScoreAlternate(*dataOpt) << std::endl;
-
-  if (options.ValidateAfterTraining) {
-    std::cout << "\n Training set:" << std::endl;
-    outputBehaviour(data.first);
-    std::cout << "\n Validation set:" << std::endl;
-    outputBehaviour(data.second);
-  } else {
-    outputBehaviour(*dataOpt);
-  }
-
   if (options.OutputNetworkParameters != Utilities::DefaultValues::OUTPUT_NETWORK_PARAMETERS) {
     torch::save(network, options.OutputNetworkParameters);
+  }
+
+  if (options.OutputDiffFilePath != Utilities::DefaultValues::OUTPUT_DIFF) {
+    saveDiffToFile(*dataOpt, options.OutputDiffFilePath);
+  }
+
+  // Output behaviour of network:
+  if (options.PrintBehaviour) {
+    if (options.ValidateAfterTraining) {
+      std::cout << "R2 score (training): " << calculateR2Score(data.first) << std::endl;
+      std::cout << "R2 score alternate (training): " << calculateR2ScoreAlternate(data.first) << std::endl;
+      std::cout << "R2 score (validation): " << calculateR2Score(data.second) << std::endl;
+      std::cout << "R2 score alternate (validation): " << calculateR2ScoreAlternate(data.second) << std::endl;
+    }
+    std::cout << "R2 score (all): " << calculateR2Score(*dataOpt) << std::endl;
+    std::cout << "R2 score alternate (all): " << calculateR2ScoreAlternate(*dataOpt) << std::endl;
+
+    if (options.ValidateAfterTraining) {
+      std::cout << "\nTraining set:" << std::endl;
+      outputBehaviour(data.first);
+      std::cout << "\nValidation set:" << std::endl;
+      outputBehaviour(data.second);
+    } else {
+      outputBehaviour(*dataOpt);
+    }
   }
 
   if (options.InteractiveMode) {
@@ -73,6 +77,9 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
 
 void Logic::trainNetwork(const DataVector& data)
 {
+  if (data.empty()) {
+    return;
+  }
   DataVector randomlyShuffledData(data);
   const auto& numberOfEpochs = options.NumberOfEpochs;
   torch::optim::SGD optimizer(network->parameters(), 0.000001); // TODO fix hardcoded value
@@ -106,7 +113,7 @@ void Logic::trainNetwork(const DataVector& data)
     }
 
     if (options.ShowProgressDuringTraining) {
-      if (epoch > numberOfEpochs) { // TODO fix hardcoded value
+      if (epoch > numberOfEpochs) {
         std::cout << "\rContinue training. Mean squared error changed from " << lastMeanError << " to " << currentMeanError << " -- epoch: " << epoch;
         std::flush(std::cout);
       } else {
@@ -138,9 +145,11 @@ void Logic::trainNetwork(const DataVector& data)
       optimizer.step();
     }
   }
-  // TODO show result only if wanted
-  std::cout << "\nTraining duration: " << formatDuration<std::chrono::milliseconds, std::chrono::hours, std::chrono::minutes, std::chrono::seconds>
-    (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start)) << std::endl;
+
+  if (options.PrintBehaviour) {
+    std::cout << "\nTraining duration: " << formatDuration<std::chrono::milliseconds, std::chrono::hours, std::chrono::minutes, std::chrono::seconds>
+      (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start)) << std::endl;
+  }
 }
 
 void Logic::performInteractiveMode()
