@@ -213,6 +213,10 @@ double Logic::calculateMeanError(DataVector const& testData)
 
 double Logic::calculateR2Score(DataVector const& testData)
 {
+  if (testData.empty()) {
+    return 1.0;
+  }
+
   if (testData[0].second.size(0) > 1) {
     std::cout << "R2 score not implemented for multidimensional output." << std::endl;
     return 0.0;
@@ -239,6 +243,10 @@ double Logic::calculateR2Score(DataVector const& testData)
 
 double Logic::calculateR2ScoreAlternate(DataVector const& testData)
 {
+  if (testData.empty()) {
+    return 1.0;
+  }
+
   if (testData[0].second.size(0) > 1) {
     std::cout << "R2 score not implemented for multidimensional output." << std::endl;
     return 0.0;
@@ -321,6 +329,7 @@ void Logic::saveValuesToFile(DataVector const& data, std::string const& path)
 
   size_t i = 0;
   for (auto const& [inputTensor, outputTensor] : data) {
+    (void) outputTensor;
     auto prediction = network->forward(inputTensor);
     torch::Tensor dInputTensor = inputTensor.clone();
 

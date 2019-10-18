@@ -38,9 +38,9 @@ const std::string CLI_HELP_TEXT = {
   "--epsilon <double>                 : If set continues training after the last epoch until the improvement of the mean squarred error is less than the set epsilon. Default: " + std::to_string(EPSILON) + "\n" +
   "--validate                         : If set splits the data set in a training and validation set. After the training the network is tested with the validation set.\n" +
   "--validatePercentage <double>      : Sets the percentage of the data, which is only used for validation and not for training. Value should be between 0 and 100. Default: " + std::to_string(VALIDATION_PERCENTAGE) + "\n" +
-  "--outValues <filepath>             : If set saves the output of the neural network for all input values to the specified file." +
-  "--outDiff <filepath>               : If set saves the difference of the output of the neural network and given input values to the specified file." +
-  "--printBehaviour                   : If set outputs the behaviour of the neural network to the console for the given input values."
+  "--outValues <filepath>             : If set saves the output of the neural network for all input values to the specified file.\n" +
+  "--outDiff <filepath>               : If set saves the difference of the output of the neural network and given input values to the specified file.\n" +
+  "--printBehaviour                   : If set outputs the behaviour of the neural network to the console for the given input values.\n"
 };
 
 }
