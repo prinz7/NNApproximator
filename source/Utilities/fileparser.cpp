@@ -64,14 +64,14 @@ void FileParser::SaveData(DataVector const& data, std::string const& outputFileP
   outputFile << fileHeader << "\n";
 
   for (auto const& [inputTensor, outputTensor] : data) {
-    outputFile << std::to_string(inputTensor[0].item<TensorDataType>());
+    outputFile << inputTensor[0].item<TensorDataType>();
 
     for (int64_t i = 1; i < inputTensor.size(0); ++i) {
-      outputFile << ", " << std::to_string(inputTensor[i].item<TensorDataType>());
+      outputFile << ", " << inputTensor[i].item<TensorDataType>();
     }
 
     for (int64_t i = 0; i < outputTensor.size(0); ++i) {
-      outputFile << ", " << std::to_string(outputTensor[i].item<TensorDataType>());
+      outputFile << ", " << outputTensor[i].item<TensorDataType>();
     }
 
     outputFile << "\n";
