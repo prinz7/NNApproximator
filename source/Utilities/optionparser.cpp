@@ -148,6 +148,21 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
       case CLIParameters::PrintBehaviour:
         options.PrintBehaviour = true;
         break;
+      case CLIParameters::Threads:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        try {
+          options.NumberOfThreads = std::stoi(argv[++i]);
+        } catch (const std::invalid_argument& e) {
+          std::cout << "Could not convert " << std::string(argv[i]) << " to integer. Reason: " << e.what() << std::endl;
+          return std::nullopt;
+        } catch (const std::out_of_range& e) {
+          std::cout << std::string(argv[i]) << " is out of range. Error: " << e.what() << std::endl;
+          return std::nullopt;
+        }
+        break;
     }
   }
 

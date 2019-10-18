@@ -1,5 +1,7 @@
 #pragma once
 
+#include <torch/torch.h>
+
 #include <map>
 #include <string>
 
@@ -23,6 +25,7 @@ const double   VALIDATION_PERCENTAGE = 30.0;
 const FilePath OUTPUT_VALUE = {};
 const FilePath OUTPUT_DIFF = {};
 const bool     PRINT_BEHAVIOUR = false;
+const int32_t  NUMBER_OF_THREADS = torch::get_num_threads();
 
 const std::string CLI_HELP_TEXT = {
   std::string("List of possible commandline parameters:\n") +
@@ -40,7 +43,8 @@ const std::string CLI_HELP_TEXT = {
   "--validatePercentage <double>      : Sets the percentage of the data, which is only used for validation and not for training. Value should be between 0 and 100. Default: " + std::to_string(VALIDATION_PERCENTAGE) + "\n" +
   "--outValues <filepath>             : If set saves the output of the neural network for all input values to the specified file.\n" +
   "--outDiff <filepath>               : If set saves the difference of the output of the neural network and given input values to the specified file.\n" +
-  "--printBehaviour                   : If set outputs the behaviour of the neural network to the console for the given input values.\n"
+  "--printBehaviour                   : If set outputs the behaviour of the neural network to the console for the given input values.\n" +
+  "--threads X | -t X                 : Sets the number of used threads to X. Default value depends on the given system. Default value of the current system: " + std::to_string(NUMBER_OF_THREADS) + "\n"
 };
 
 }
@@ -48,7 +52,7 @@ const std::string CLI_HELP_TEXT = {
 enum class CLIParameters
 {
   Help, InputFilePath, NumberOfInputVariables, NumberOfOutputVariables, NumberOfEpochs, ShowProgressDuringTraining, InputNetworkParameters,
-  OutputNetworkParameters, Interactive, Epsilon, Validate, ValidatePercentage, OutValues, OutDiff, PrintBehaviour
+  OutputNetworkParameters, Interactive, Epsilon, Validate, ValidatePercentage, OutValues, OutDiff, PrintBehaviour, Threads
 };
 
 const std::map<std::string, CLIParameters> CLIParameterMap {
@@ -71,7 +75,9 @@ const std::map<std::string, CLIParameters> CLIParameterMap {
   {"--validatePercentage",CLIParameters::ValidatePercentage},
   {"--outValues",         CLIParameters::OutValues},
   {"--outDiff",           CLIParameters::OutDiff},
-  {"--printBehaviour",    CLIParameters::PrintBehaviour}
+  {"--printBehaviour",    CLIParameters::PrintBehaviour},
+  {"--threads",           CLIParameters::Threads},
+  {"-t",                  CLIParameters::Threads}
 };
 
 class ProgramOptions
@@ -88,9 +94,10 @@ public:
   double   Epsilon {                    DefaultValues::EPSILON };
   bool     ValidateAfterTraining {      DefaultValues::VALIDATE_AFTER_TRAINING };
   double   ValidationPercentage {       DefaultValues::VALIDATION_PERCENTAGE };
-  FilePath OutputValuesFilePath {       DefaultValues::OUTPUT_VALUE};
-  FilePath OutputDiffFilePath {         DefaultValues::OUTPUT_DIFF};
-  bool     PrintBehaviour {             DefaultValues::PRINT_BEHAVIOUR};
+  FilePath OutputValuesFilePath {       DefaultValues::OUTPUT_VALUE };
+  FilePath OutputDiffFilePath {         DefaultValues::OUTPUT_DIFF };
+  bool     PrintBehaviour {             DefaultValues::PRINT_BEHAVIOUR };
+  int32_t  NumberOfThreads {            DefaultValues::NUMBER_OF_THREADS };
 };
 
 }

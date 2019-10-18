@@ -16,6 +16,8 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     return false;
   }
 
+  torch::set_num_threads(options.NumberOfThreads);
+
 //  for (auto& [inputTensor, outputTensor] : *dataOpt) {
 //    (void) inputTensor;
 //    Utilities::DataNormalizator::ScaleLogarithmic(outputTensor);
