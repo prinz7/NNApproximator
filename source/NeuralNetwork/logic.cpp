@@ -15,18 +15,20 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     return false;
   }
 
-//  for (auto& [inputTensor, outputTensor] : *dataOpt) {
-//    (void) inputTensor;
-//    Utilities::DataNormalizator::ScaleLogarithmic(outputTensor);
-//  }
+  for (auto& [inputTensor, outputTensor] : *dataOpt) {
+    (void) inputTensor;
+    Utilities::DataNormalizator::ScaleLogarithmic(outputTensor);
+  }
   Utilities::DataNormalizator::Normalize(*dataOpt, minMax, 0.0, 1.0);  // TODO let user control normalization
 
-  network = Network{options.NumberOfInputVariables, options.NumberOfOutputVariables, std::vector<uint32_t>{500}}; // TODO fix hardcoded value
+  network = Network{options.NumberOfInputVariables, options.NumberOfOutputVariables, std::vector<uint32_t>{500, 500}}; // TODO fix hardcoded value
 
   if (options.InputNetworkParameters != Utilities::DefaultValues::INPUT_NETWORK_PARAMETERS) {
     torch::load(network, options.InputNetworkParameters);
   }
 
+  saveDiffToFile(*dataOpt, options.InputDataFilePath + "_DIFF");
+  exit(9);
   std::pair<DataVector, DataVector> data;
 
   if (options.ValidateAfterTraining) {
@@ -297,6 +299,30 @@ void Logic::outputBehaviour(DataVector const& data)
     for (uint32_t i = 0; i < options.NumberOfOutputVariables; ++i) std::cout << prediction[i].item<TensorDataType>() << " (" << dPrediction[i].item<TensorDataType>() << ") ";
     std::cout << "\nloss: " << loss.item<double>() << std::endl;
   }
+}
+
+void Logic::saveDiffToFile(DataVector const& data, std::string const& path)
+{
+  DataVector diff(data.size());
+
+  size_t i = 0;
+  for (auto const& [inputTensor, outputTensor] : data) {
+    auto prediction = network->forward(inputTensor);
+    diff[i++] = std::make_pair(inputTensor, calculateDiff(outputTensor, prediction));
+  }
+
+  Utilities::FileParser::SaveData(diff, path);
+}
+
+torch::Tensor Logic::calculateDiff(torch::Tensor const& input1, torch::Tensor const& input2) const
+{
+  auto output = input1.clone();
+
+  for (int64_t i = 0; i < input1.size(0); ++i) {
+    output[i] -= input2[i].item<TensorDataType>();
+  }
+
+  return output;
 }
 
 }

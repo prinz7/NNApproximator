@@ -24,6 +24,9 @@ private:
   [[nodiscard]]
   std::pair<DataVector, DataVector> splitData(DataVector const& inputData, double trainingPercentage) const;
   void outputBehaviour(DataVector const& data);
+  void saveDiffToFile(DataVector const& data, std::string const& outputPath);
+  [[nodiscard]]
+  torch::Tensor calculateDiff(torch::Tensor const& input1, torch::Tensor const& input2) const;
 
 private:
   Network network {nullptr};
