@@ -26,6 +26,8 @@ const FilePath OUTPUT_VALUE = {};
 const FilePath OUTPUT_DIFF = {};
 const bool     PRINT_BEHAVIOUR = false;
 const int32_t  NUMBER_OF_THREADS = torch::get_num_threads();
+const FilePath INPUT_MIN_MAX_FILE_PATH = {};
+const FilePath OUTPUT_MIN_MAX_FILE_PATH = {};
 
 const std::string CLI_HELP_TEXT = {
   std::string("List of possible commandline parameters:\n") +
@@ -44,7 +46,9 @@ const std::string CLI_HELP_TEXT = {
   "--outValues <filepath>             : If set saves the output of the neural network for all input values to the specified file.\n" +
   "--outDiff <filepath>               : If set saves the difference of the output of the neural network and given input values to the specified file.\n" +
   "--printBehaviour                   : If set outputs the behaviour of the neural network to the console for the given input values.\n" +
-  "--threads X | -t X                 : Sets the number of used threads to X. Default value depends on the given system. Default value of the current system: " + std::to_string(NUMBER_OF_THREADS) + "\n"
+  "--threads X | -t X                 : Sets the number of used threads to X. Default value depends on the given system. Default value of the current system: " + std::to_string(NUMBER_OF_THREADS) + "\n" +
+  "--inMinMax <filepath>              : If set uses the data in the given file to use as min/max values to normalization.\n" +
+  "--outMinMax <filepath>             : If set saves the used min/max values to the given file.\n"
 };
 
 }
@@ -52,7 +56,8 @@ const std::string CLI_HELP_TEXT = {
 enum class CLIParameters
 {
   Help, InputFilePath, NumberOfInputVariables, NumberOfOutputVariables, NumberOfEpochs, ShowProgressDuringTraining, InputNetworkParameters,
-  OutputNetworkParameters, Interactive, Epsilon, Validate, ValidatePercentage, OutValues, OutDiff, PrintBehaviour, Threads
+  OutputNetworkParameters, Interactive, Epsilon, Validate, ValidatePercentage, OutValues, OutDiff, PrintBehaviour, Threads,
+  InputMinMax, OutputMinMax
 };
 
 const std::map<std::string, CLIParameters> CLIParameterMap {
@@ -77,7 +82,9 @@ const std::map<std::string, CLIParameters> CLIParameterMap {
   {"--outDiff",           CLIParameters::OutDiff},
   {"--printBehaviour",    CLIParameters::PrintBehaviour},
   {"--threads",           CLIParameters::Threads},
-  {"-t",                  CLIParameters::Threads}
+  {"-t",                  CLIParameters::Threads},
+  {"--inMinMax",          CLIParameters::InputMinMax},
+  {"--outMinMax",         CLIParameters::OutputMinMax}
 };
 
 class ProgramOptions
@@ -98,6 +105,8 @@ public:
   FilePath OutputDiffFilePath {         DefaultValues::OUTPUT_DIFF };
   bool     PrintBehaviour {             DefaultValues::PRINT_BEHAVIOUR };
   int32_t  NumberOfThreads {            DefaultValues::NUMBER_OF_THREADS };
+  FilePath InputMinMaxFilePath {        DefaultValues::INPUT_MIN_MAX_FILE_PATH };
+  FilePath OutputMinMaxFilePath {       DefaultValues::OUTPUT_MIN_MAX_FILE_PATH };
 };
 
 }

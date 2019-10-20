@@ -13,6 +13,7 @@ public:
   bool performUserRequest(Utilities::ProgramOptions const& options);
 
 private:
+  void normalizeWithFileData(DataVector& data, DataVector const& minMax);
   void trainNetwork(DataVector const& data);
   void performInteractiveMode();
   [[nodiscard]]
@@ -28,6 +29,7 @@ private:
   void saveDiffToFile(DataVector const& data, std::string const& outputPath);
   [[nodiscard]]
   torch::Tensor calculateDiff(torch::Tensor const& input1, torch::Tensor const& input2) const;
+  void saveMinMaxToFile() const;
 
 private:
   Network network {nullptr};

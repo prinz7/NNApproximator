@@ -5,7 +5,7 @@
 namespace Utilities {
 
 [[nodiscard]]
-static inline bool ConvertStringToBool(const std::string& str)
+static inline bool ConvertStringToBool(std::string const& str)
 {
   return !(str == "0" || str == "false" || str == "False" || str == "FALSE");
 }
@@ -162,6 +162,20 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
           std::cout << std::string(argv[i]) << " is out of range. Error: " << e.what() << std::endl;
           return std::nullopt;
         }
+        break;
+      case CLIParameters::InputMinMax:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        options.InputMinMaxFilePath = std::string(argv[++i]);
+        break;
+      case CLIParameters::OutputMinMax:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        options.OutputMinMaxFilePath = std::string(argv[++i]);
         break;
     }
   }

@@ -22,7 +22,27 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
 //    (void) inputTensor;
 //    Utilities::DataNormalizator::ScaleLogarithmic(outputTensor);
 //  }
-  Utilities::DataNormalizator::Normalize(*dataOpt, minMax, 0.0, 1.0);  // TODO let user control normalization
+  if (options.InputMinMaxFilePath != Utilities::DefaultValues::INPUT_MIN_MAX_FILE_PATH) {
+    std::string fileHeader{};
+    auto minMaxOpt = Utilities::FileParser::ParseInputFile(options.InputMinMaxFilePath, options.NumberOfInputVariables,
+      options.NumberOfOutputVariables, fileHeader);
+    if (!minMaxOpt) {
+      return false;
+    }
+
+    if (minMaxOpt->size() != 2) {
+      std::cout << "Error: File with min/max values has the wrong number of data. Expected 2 values for each column, got: " + std::to_string(minMaxOpt->size()) << std::endl;
+      return false;
+    }
+
+    normalizeWithFileData(*dataOpt, *minMaxOpt);
+  } else {
+    Utilities::DataNormalizator::Normalize(*dataOpt, minMax, 0.0, 1.0);  // TODO let user control normalization
+  }
+
+  if (options.OutputMinMaxFilePath != Utilities::DefaultValues::OUTPUT_MIN_MAX_FILE_PATH) {
+    saveMinMaxToFile();
+  }
 
   network = Network{options.NumberOfInputVariables, options.NumberOfOutputVariables, std::vector<uint32_t>{500, 500}}; // TODO fix hardcoded value
 
@@ -82,6 +102,26 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   return true;
 }
 
+void Logic::normalizeWithFileData(DataVector& data, DataVector const& fileMinMax)
+{
+  inputMinMax = MinMaxVector(options.NumberOfInputVariables);
+  outputMinMax = MinMaxVector(options.NumberOfOutputVariables);
+
+  for (uint32_t j = 0; j < options.NumberOfInputVariables; ++j) {
+    inputMinMax[j].first = fileMinMax[0].first[j].item<TensorDataType>();
+    inputMinMax[j].second = fileMinMax[1].first[j].item<TensorDataType>();
+  }
+  for (uint32_t j = 0; j < options.NumberOfOutputVariables; ++j) {
+    outputMinMax[j].first = fileMinMax[0].second[j].item<TensorDataType>();
+    outputMinMax[j].second = fileMinMax[1].second[j].item<TensorDataType>();
+  }
+
+  for (auto& [inputTensor, outputTensor] : data) {
+    Utilities::DataNormalizator::Normalize(inputTensor, inputMinMax, 0.0, 1.0);
+    Utilities::DataNormalizator::Normalize(outputTensor, outputMinMax, 0.0, 1.0);
+  }
+}
+
 void Logic::trainNetwork(const DataVector& data)
 {
   if (data.empty()) {
@@ -91,8 +131,8 @@ void Logic::trainNetwork(const DataVector& data)
   const auto& numberOfEpochs = options.NumberOfEpochs;
   torch::optim::SGD optimizer(network->parameters(), 0.000001); // TODO fix hardcoded value
 
-  std::random_device rd;
-  std::mt19937 g(rd());
+//  std::random_device rd;
+//  std::mt19937 g(rd());
 
   auto lastMeanError = calculateMeanError(data);
   auto currentMeanError = lastMeanError;
@@ -373,6 +413,25 @@ torch::Tensor Logic::calculateDiff(torch::Tensor const& input1, torch::Tensor co
   }
 
   return output;
+}
+
+void Logic::saveMinMaxToFile() const
+{
+  auto inTensorDefault = torch::zeros(options.NumberOfInputVariables, TORCH_DATA_TYPE);
+  auto outTensorDefault = torch::zeros(options.NumberOfOutputVariables, TORCH_DATA_TYPE);
+  DataVector data(2, std::make_pair(inTensorDefault, outTensorDefault));
+
+  for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) {
+    data[0].first[i] = inputMinMax[i].first;
+    data[1].first[i] = inputMinMax[i].second;
+  }
+
+  for (uint32_t i = 0; i < options.NumberOfOutputVariables; ++i) {
+    data[0].second[i] = outputMinMax[i].first;
+    data[1].second[i] = outputMinMax[i].second;
+  }
+
+  Utilities::FileParser::SaveData(data, options.OutputMinMaxFilePath, inputFileHeader);
 }
 
 }
