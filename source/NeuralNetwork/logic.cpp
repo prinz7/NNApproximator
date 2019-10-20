@@ -419,7 +419,9 @@ void Logic::saveMinMaxToFile() const
 {
   auto inTensorDefault = torch::zeros(options.NumberOfInputVariables, TORCH_DATA_TYPE);
   auto outTensorDefault = torch::zeros(options.NumberOfOutputVariables, TORCH_DATA_TYPE);
-  DataVector data(2, std::make_pair(inTensorDefault, outTensorDefault));
+  DataVector data(2);
+  data[0] = std::make_pair(inTensorDefault, outTensorDefault);
+  data[1] = std::make_pair(inTensorDefault.clone(), outTensorDefault.clone());
 
   for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) {
     data[0].first[i] = inputMinMax[i].first;
