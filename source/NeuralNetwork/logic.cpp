@@ -24,6 +24,7 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
       Utilities::DataNormalizator::ScaleLogarithmic(outputTensor);
     }
   }
+
   if (options.InputMinMaxFilePath != Utilities::DefaultValues::INPUT_MIN_MAX_FILE_PATH) {
     std::string fileHeader{};
     auto minMaxOpt = Utilities::FileParser::ParseInputFile(options.InputMinMaxFilePath, options.NumberOfInputVariables,
@@ -385,6 +386,10 @@ void Logic::saveValuesToFile(DataVector const& data, std::string const& path)
     Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, false);
     Utilities::DataNormalizator::Denormalize(prediction, outputMinMax, 0.0 , 1.0, false);
 
+    if (options.LogScaling) {
+      Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
+    }
+
     values[i++] = std::make_pair(dInputTensor, prediction);
   }
 
@@ -404,6 +409,11 @@ void Logic::saveDiffToFile(DataVector const& data, std::string const& path)
     Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, false);
     Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, false);
     Utilities::DataNormalizator::Denormalize(prediction, outputMinMax, 0.0 , 1.0, false);
+
+    if (options.LogScaling) {
+      Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
+      Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
+    }
 
     diff[i++] = std::make_pair(dInputTensor, calculateDiff(dOutputTensor, prediction));
   }
