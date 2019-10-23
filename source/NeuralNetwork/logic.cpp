@@ -82,11 +82,14 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     if (options.ValidateAfterTraining) {
       std::cout << "R2 score (training): " << calculateR2Score(data.first) << std::endl;
       std::cout << "R2 score alternate (training): " << calculateR2ScoreAlternate(data.first) << std::endl;
+      std::cout << "R2 score alternate denormalized (training): " << calculateR2ScoreAlternateDenormalized(data.first) << std::endl;
       std::cout << "R2 score (validation): " << calculateR2Score(data.second) << std::endl;
       std::cout << "R2 score alternate (validation): " << calculateR2ScoreAlternate(data.second) << std::endl;
+      std::cout << "R2 score alternate denormalized (validation): " << calculateR2ScoreAlternateDenormalized(data.second) << std::endl;
     }
     std::cout << "R2 score (all): " << calculateR2Score(*dataOpt) << std::endl;
     std::cout << "R2 score alternate (all): " << calculateR2ScoreAlternate(*dataOpt) << std::endl;
+    std::cout << "R2 score alternate denormalized (all): " << calculateR2ScoreAlternateDenormalized(*dataOpt) << std::endl;
 
     if (options.ValidateAfterTraining) {
       std::cout << "\nTraining set:" << std::endl;
@@ -320,6 +323,53 @@ double Logic::calculateR2ScoreAlternate(DataVector const& testData)
   return 1.0 - (SQR / SQT);
 }
 
+double Logic::calculateR2ScoreAlternateDenormalized(DataVector const& testData)
+{
+  if (testData.empty()) {
+    return 1.0;
+  }
+
+  if (testData[0].second.size(0) > 1) {
+    std::cout << "R2 score not implemented for multidimensional output." << std::endl;
+    return 0.0;
+  }
+
+  double SQR = 0.0;
+  double SQT = 0.0;
+
+  TensorDataType y_cross = 0.0;
+  for (auto const& [x, y] : testData) {
+    (void) x;
+    auto yD = y.clone();
+    Utilities::DataNormalizator::Denormalize(yD, outputMinMax, 0.0 , 1.0, false);
+
+    if (options.LogScaling) {
+      Utilities::DataNormalizator::UnscaleLogarithmic(yD);
+    }
+
+    y_cross += yD[0].item<TensorDataType>();
+  }
+  y_cross /= testData.size();
+
+  for (auto const& [x, y] : testData) {
+    auto prediction = network->forward(x);
+    auto yD = y.clone();
+    Utilities::DataNormalizator::Denormalize(yD, outputMinMax, 0.0 , 1.0, false);
+    Utilities::DataNormalizator::Denormalize(prediction, outputMinMax, 0.0 , 1.0, false);
+
+    if (options.LogScaling) {
+      Utilities::DataNormalizator::UnscaleLogarithmic(yD);
+      Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
+    }
+
+    TensorDataType yi = yD[0].item<TensorDataType>();
+
+    SQR += std::pow(yi - prediction[0].item<TensorDataType>(), 2.0);
+    SQT += std::pow(yi - y_cross, 2.0);
+  }
+
+  return 1.0 - (SQR / SQT);
+}
 
 std::pair<DataVector, DataVector> Logic::splitData(DataVector const& inputData, double const trainingPercentage) const
 {
