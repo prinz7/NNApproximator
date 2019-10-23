@@ -116,6 +116,9 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
           return std::nullopt;
         }
         break;
+      case CLIParameters::LogScaling:
+        options.LogScaling = true;
+        break;
       case CLIParameters::Validate:
         options.ValidateAfterTraining = true;
         break;

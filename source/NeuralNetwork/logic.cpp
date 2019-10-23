@@ -18,10 +18,12 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
 
   torch::set_num_threads(options.NumberOfThreads);
 
-//  for (auto& [inputTensor, outputTensor] : *dataOpt) {
-//    (void) inputTensor;
-//    Utilities::DataNormalizator::ScaleLogarithmic(outputTensor);
-//  }
+  if (options.LogScaling) {
+    for (auto& [inputTensor, outputTensor] : *dataOpt) {
+      (void) inputTensor;
+      Utilities::DataNormalizator::ScaleLogarithmic(outputTensor);
+    }
+  }
   if (options.InputMinMaxFilePath != Utilities::DefaultValues::INPUT_MIN_MAX_FILE_PATH) {
     std::string fileHeader{};
     auto minMaxOpt = Utilities::FileParser::ParseInputFile(options.InputMinMaxFilePath, options.NumberOfInputVariables,
@@ -225,7 +227,9 @@ void Logic::performInteractiveMode()
       auto output = network->forward(inTensor);
       auto dOutputTensor = output.clone();
       Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, true);
-//      Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
+      if (options.LogScaling) {
+        Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
+      }
 
       std::cout << "Normalized input: ";
       for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) {
@@ -351,9 +355,12 @@ void Logic::outputBehaviour(DataVector const& data)
 
     Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, true);
     Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, true);
-//    Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
     Utilities::DataNormalizator::Denormalize(dPrediction, outputMinMax, 0.0 , 1.0, true);
-//    Utilities::DataNormalizator::UnscaleLogarithmic(dPrediction);
+
+    if (options.LogScaling) {
+      Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
+      Utilities::DataNormalizator::UnscaleLogarithmic(dPrediction);
+    }
 
     std::cout << "\nx: ";
     for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) std::cout << inputTensor[i].item<TensorDataType>() << " (" << dInputTensor[i].item<TensorDataType>() << ") ";
