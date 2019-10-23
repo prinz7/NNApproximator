@@ -9,7 +9,8 @@ namespace Utilities {
 class FileParser
 {
 public:
-  static std::optional<DataVector> ParseInputFile(const std::string& path, uint32_t numberOfInputNodes, uint32_t numberOfOutputNodes);
+  static std::optional<DataVector> ParseInputFile(std::string const& path, uint32_t numberOfInputNodes, uint32_t numberOfOutputNodes, std::string& fileHeader);
+  static void SaveData(DataVector const& data, std::string const& outputFilePath, std::string const& fileHeader);
 };
 
 }

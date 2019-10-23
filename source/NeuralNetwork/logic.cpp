@@ -10,18 +10,41 @@ namespace NeuralNetwork {
 bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
 {
   options = user_options;
-  auto dataOpt = Utilities::FileParser::ParseInputFile(options.InputDataFilePath, options.NumberOfInputVariables, options.NumberOfOutputVariables);
+  auto dataOpt = Utilities::FileParser::ParseInputFile(options.InputDataFilePath, options.NumberOfInputVariables,
+    options.NumberOfOutputVariables, inputFileHeader);
   if (!dataOpt) {
     return false;
   }
+
+  torch::set_num_threads(options.NumberOfThreads);
 
 //  for (auto& [inputTensor, outputTensor] : *dataOpt) {
 //    (void) inputTensor;
 //    Utilities::DataNormalizator::ScaleLogarithmic(outputTensor);
 //  }
-  Utilities::DataNormalizator::Normalize(*dataOpt, minMax, 0.0, 1.0);  // TODO let user control normalization
+  if (options.InputMinMaxFilePath != Utilities::DefaultValues::INPUT_MIN_MAX_FILE_PATH) {
+    std::string fileHeader{};
+    auto minMaxOpt = Utilities::FileParser::ParseInputFile(options.InputMinMaxFilePath, options.NumberOfInputVariables,
+      options.NumberOfOutputVariables, fileHeader);
+    if (!minMaxOpt) {
+      return false;
+    }
 
-  network = Network{options.NumberOfInputVariables, options.NumberOfOutputVariables, std::vector<uint32_t>{500}}; // TODO fix hardcoded value
+    if (minMaxOpt->size() != 2) {
+      std::cout << "Error: File with min/max values has the wrong number of data. Expected 2 values for each column, got: " + std::to_string(minMaxOpt->size()) << std::endl;
+      return false;
+    }
+
+    normalizeWithFileData(*dataOpt, *minMaxOpt);
+  } else {
+    Utilities::DataNormalizator::Normalize(*dataOpt, minMax, 0.0, 1.0);  // TODO let user control normalization
+  }
+
+  if (options.OutputMinMaxFilePath != Utilities::DefaultValues::OUTPUT_MIN_MAX_FILE_PATH) {
+    saveMinMaxToFile();
+  }
+
+  network = Network{options.NumberOfInputVariables, options.NumberOfOutputVariables, std::vector<uint32_t>{500, 500}}; // TODO fix hardcoded value
 
   if (options.InputNetworkParameters != Utilities::DefaultValues::INPUT_NETWORK_PARAMETERS) {
     torch::load(network, options.InputNetworkParameters);
@@ -39,27 +62,37 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
 
   network->eval();
 
-  // Output behaviour of network: // TODO user parametrization
-  if (options.ValidateAfterTraining) {
-    std::cout << "R2 score (training): " << calculateR2Score(data.first) << std::endl;
-    std::cout << "R2 score alternate (training): " << calculateR2ScoreAlternate(data.first) << std::endl;
-    std::cout << "R2 score (validation): " << calculateR2Score(data.second) << std::endl;
-    std::cout << "R2 score alternate (validation): " << calculateR2ScoreAlternate(data.second) << std::endl;
-  }
-  std::cout << "R2 score (all): " << calculateR2Score(*dataOpt) << std::endl;
-  std::cout << "R2 score alternate (all): " << calculateR2ScoreAlternate(*dataOpt) << std::endl;
-
-  if (options.ValidateAfterTraining) {
-    std::cout << "\n Training set:" << std::endl;
-    outputBehaviour(data.first);
-    std::cout << "\n Validation set:" << std::endl;
-    outputBehaviour(data.second);
-  } else {
-    outputBehaviour(*dataOpt);
-  }
-
   if (options.OutputNetworkParameters != Utilities::DefaultValues::OUTPUT_NETWORK_PARAMETERS) {
     torch::save(network, options.OutputNetworkParameters);
+  }
+
+  if (options.OutputValuesFilePath != Utilities::DefaultValues::OUTPUT_VALUE) {
+    saveValuesToFile(*dataOpt, options.OutputValuesFilePath);
+  }
+
+  if (options.OutputDiffFilePath != Utilities::DefaultValues::OUTPUT_DIFF) {
+    saveDiffToFile(*dataOpt, options.OutputDiffFilePath);
+  }
+
+  // Output behaviour of network:
+  if (options.PrintBehaviour) {
+    if (options.ValidateAfterTraining) {
+      std::cout << "R2 score (training): " << calculateR2Score(data.first) << std::endl;
+      std::cout << "R2 score alternate (training): " << calculateR2ScoreAlternate(data.first) << std::endl;
+      std::cout << "R2 score (validation): " << calculateR2Score(data.second) << std::endl;
+      std::cout << "R2 score alternate (validation): " << calculateR2ScoreAlternate(data.second) << std::endl;
+    }
+    std::cout << "R2 score (all): " << calculateR2Score(*dataOpt) << std::endl;
+    std::cout << "R2 score alternate (all): " << calculateR2ScoreAlternate(*dataOpt) << std::endl;
+
+    if (options.ValidateAfterTraining) {
+      std::cout << "\nTraining set:" << std::endl;
+      outputBehaviour(data.first);
+      std::cout << "\nValidation set:" << std::endl;
+      outputBehaviour(data.second);
+    } else {
+      outputBehaviour(*dataOpt);
+    }
   }
 
   if (options.InteractiveMode) {
@@ -69,14 +102,37 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   return true;
 }
 
+void Logic::normalizeWithFileData(DataVector& data, DataVector const& fileMinMax)
+{
+  inputMinMax = MinMaxVector(options.NumberOfInputVariables);
+  outputMinMax = MinMaxVector(options.NumberOfOutputVariables);
+
+  for (uint32_t j = 0; j < options.NumberOfInputVariables; ++j) {
+    inputMinMax[j].first = fileMinMax[0].first[j].item<TensorDataType>();
+    inputMinMax[j].second = fileMinMax[1].first[j].item<TensorDataType>();
+  }
+  for (uint32_t j = 0; j < options.NumberOfOutputVariables; ++j) {
+    outputMinMax[j].first = fileMinMax[0].second[j].item<TensorDataType>();
+    outputMinMax[j].second = fileMinMax[1].second[j].item<TensorDataType>();
+  }
+
+  for (auto& [inputTensor, outputTensor] : data) {
+    Utilities::DataNormalizator::Normalize(inputTensor, inputMinMax, 0.0, 1.0);
+    Utilities::DataNormalizator::Normalize(outputTensor, outputMinMax, 0.0, 1.0);
+  }
+}
+
 void Logic::trainNetwork(const DataVector& data)
 {
+  if (data.empty()) {
+    return;
+  }
   DataVector randomlyShuffledData(data);
   const auto& numberOfEpochs = options.NumberOfEpochs;
   torch::optim::SGD optimizer(network->parameters(), 0.000001); // TODO fix hardcoded value
 
-  std::random_device rd;
-  std::mt19937 g(rd());
+//  std::random_device rd;
+//  std::mt19937 g(rd());
 
   auto lastMeanError = calculateMeanError(data);
   auto currentMeanError = lastMeanError;
@@ -104,7 +160,7 @@ void Logic::trainNetwork(const DataVector& data)
     }
 
     if (options.ShowProgressDuringTraining) {
-      if (epoch > numberOfEpochs) { // TODO fix hardcoded value
+      if (epoch > numberOfEpochs) {
         std::cout << "\rContinue training. Mean squared error changed from " << lastMeanError << " to " << currentMeanError << " -- epoch: " << epoch;
         std::flush(std::cout);
       } else {
@@ -136,9 +192,11 @@ void Logic::trainNetwork(const DataVector& data)
       optimizer.step();
     }
   }
-  // TODO show result only if wanted
-  std::cout << "\nTraining duration: " << formatDuration<std::chrono::milliseconds, std::chrono::hours, std::chrono::minutes, std::chrono::seconds>
-    (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start)) << std::endl;
+
+  if (options.PrintBehaviour) {
+    std::cout << "\nTraining duration: " << formatDuration<std::chrono::milliseconds, std::chrono::hours, std::chrono::minutes, std::chrono::seconds>
+      (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start)) << std::endl;
+  }
 }
 
 void Logic::performInteractiveMode()
@@ -197,6 +255,10 @@ double Logic::calculateMeanError(DataVector const& testData)
 
 double Logic::calculateR2Score(DataVector const& testData)
 {
+  if (testData.empty()) {
+    return 1.0;
+  }
+
   if (testData[0].second.size(0) > 1) {
     std::cout << "R2 score not implemented for multidimensional output." << std::endl;
     return 0.0;
@@ -223,6 +285,10 @@ double Logic::calculateR2Score(DataVector const& testData)
 
 double Logic::calculateR2ScoreAlternate(DataVector const& testData)
 {
+  if (testData.empty()) {
+    return 1.0;
+  }
+
   if (testData[0].second.size(0) > 1) {
     std::cout << "R2 score not implemented for multidimensional output." << std::endl;
     return 0.0;
@@ -297,6 +363,77 @@ void Logic::outputBehaviour(DataVector const& data)
     for (uint32_t i = 0; i < options.NumberOfOutputVariables; ++i) std::cout << prediction[i].item<TensorDataType>() << " (" << dPrediction[i].item<TensorDataType>() << ") ";
     std::cout << "\nloss: " << loss.item<double>() << std::endl;
   }
+}
+
+void Logic::saveValuesToFile(DataVector const& data, std::string const& path)
+{
+  DataVector values(data.size());
+
+  size_t i = 0;
+  for (auto const& [inputTensor, outputTensor] : data) {
+    (void) outputTensor;
+    auto prediction = network->forward(inputTensor);
+    torch::Tensor dInputTensor = inputTensor.clone();
+
+    Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, false);
+    Utilities::DataNormalizator::Denormalize(prediction, outputMinMax, 0.0 , 1.0, false);
+
+    values[i++] = std::make_pair(dInputTensor, prediction);
+  }
+
+  Utilities::FileParser::SaveData(values, path, inputFileHeader);
+}
+
+void Logic::saveDiffToFile(DataVector const& data, std::string const& path)
+{
+  DataVector diff(data.size());
+
+  size_t i = 0;
+  for (auto const& [inputTensor, outputTensor] : data) {
+    auto prediction = network->forward(inputTensor);
+    torch::Tensor dInputTensor = inputTensor.clone();
+    torch::Tensor dOutputTensor = outputTensor.clone();
+
+    Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, false);
+    Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, false);
+    Utilities::DataNormalizator::Denormalize(prediction, outputMinMax, 0.0 , 1.0, false);
+
+    diff[i++] = std::make_pair(dInputTensor, calculateDiff(dOutputTensor, prediction));
+  }
+
+  Utilities::FileParser::SaveData(diff, path, inputFileHeader);
+}
+
+torch::Tensor Logic::calculateDiff(torch::Tensor const& input1, torch::Tensor const& input2) const
+{
+  auto output = input1.clone();
+
+  for (int64_t i = 0; i < input1.size(0); ++i) {
+    output[i] -= input2[i].item<TensorDataType>();
+  }
+
+  return output;
+}
+
+void Logic::saveMinMaxToFile() const
+{
+  auto inTensorDefault = torch::zeros(options.NumberOfInputVariables, TORCH_DATA_TYPE);
+  auto outTensorDefault = torch::zeros(options.NumberOfOutputVariables, TORCH_DATA_TYPE);
+  DataVector data(2);
+  data[0] = std::make_pair(inTensorDefault, outTensorDefault);
+  data[1] = std::make_pair(inTensorDefault.clone(), outTensorDefault.clone());
+
+  for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) {
+    data[0].first[i] = inputMinMax[i].first;
+    data[1].first[i] = inputMinMax[i].second;
+  }
+
+  for (uint32_t i = 0; i < options.NumberOfOutputVariables; ++i) {
+    data[0].second[i] = outputMinMax[i].first;
+    data[1].second[i] = outputMinMax[i].second;
+  }
+
+  Utilities::FileParser::SaveData(data, options.OutputMinMaxFilePath, inputFileHeader);
 }
 
 }

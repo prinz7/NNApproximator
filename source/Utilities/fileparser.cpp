@@ -4,7 +4,7 @@
 
 namespace Utilities {
 
-std::optional<DataVector> FileParser::ParseInputFile(const std::string& path, uint32_t numberOfInputNodes, uint32_t numberOfOutputNodes)
+std::optional<DataVector> FileParser::ParseInputFile(const std::string& path, uint32_t numberOfInputNodes, uint32_t numberOfOutputNodes, std::string& fileHeader)
 {
   auto data = DataVector();
 
@@ -20,8 +20,7 @@ std::optional<DataVector> FileParser::ParseInputFile(const std::string& path, ui
     std::cout << "Error: Inputfile is empty or not valid." << std::endl;
     return std::nullopt;
   }
-
-  // TODO: Use Header of input file
+  fileHeader = line;
 
   while (std::getline(inputFile, line)) {
     line.erase (std::remove(line.begin(), line.end(), ','), line.end());  // remove ',' from string
@@ -51,7 +50,34 @@ std::optional<DataVector> FileParser::ParseInputFile(const std::string& path, ui
     data.emplace_back(std::make_pair(inTensor, outTensor));
   }
 
+  inputFile.close();
   return std::make_optional(data);
+}
+
+void FileParser::SaveData(DataVector const& data, std::string const& outputFilePath, std::string const& fileHeader)
+{
+  if (data.empty()) {
+    return;
+  }
+  std::ofstream outputFile(outputFilePath);
+
+  outputFile << fileHeader << "\n";
+
+  for (auto const& [inputTensor, outputTensor] : data) {
+    outputFile << inputTensor[0].item<TensorDataType>();
+
+    for (int64_t i = 1; i < inputTensor.size(0); ++i) {
+      outputFile << ", " << inputTensor[i].item<TensorDataType>();
+    }
+
+    for (int64_t i = 0; i < outputTensor.size(0); ++i) {
+      outputFile << ", " << outputTensor[i].item<TensorDataType>();
+    }
+
+    outputFile << "\n";
+  }
+
+  outputFile.close();
 }
 
 }

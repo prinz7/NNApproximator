@@ -5,7 +5,7 @@
 namespace Utilities {
 
 [[nodiscard]]
-static inline bool ConvertStringToBool(const std::string& str)
+static inline bool ConvertStringToBool(std::string const& str)
 {
   return !(str == "0" || str == "false" || str == "False" || str == "FALSE");
 }
@@ -35,7 +35,7 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
         }
         options.InputDataFilePath = std::string(argv[++i]);
         break;
-      case CLIParameters::NumberOfInputVariabes:
+      case CLIParameters::NumberOfInputVariables:
         if (i + 1 >= argc) {
           std::cout << "Not enough parameters after " << inputString << std::endl;
           return std::nullopt;
@@ -130,6 +130,52 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
           std::cout << "Could not parse " << std::string(argv[i]) << " to double." << std::endl;
           return std::nullopt;
         }
+        break;
+      case CLIParameters::OutValues:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        options.OutputValuesFilePath = std::string(argv[++i]);
+        break;
+      case CLIParameters::OutDiff:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        options.OutputDiffFilePath = std::string(argv[++i]);
+        break;
+      case CLIParameters::PrintBehaviour:
+        options.PrintBehaviour = true;
+        break;
+      case CLIParameters::Threads:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        try {
+          options.NumberOfThreads = std::stoi(argv[++i]);
+        } catch (const std::invalid_argument& e) {
+          std::cout << "Could not convert " << std::string(argv[i]) << " to integer. Reason: " << e.what() << std::endl;
+          return std::nullopt;
+        } catch (const std::out_of_range& e) {
+          std::cout << std::string(argv[i]) << " is out of range. Error: " << e.what() << std::endl;
+          return std::nullopt;
+        }
+        break;
+      case CLIParameters::InputMinMax:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        options.InputMinMaxFilePath = std::string(argv[++i]);
+        break;
+      case CLIParameters::OutputMinMax:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        options.OutputMinMaxFilePath = std::string(argv[++i]);
         break;
     }
   }
