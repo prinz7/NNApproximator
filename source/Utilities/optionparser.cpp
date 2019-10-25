@@ -180,6 +180,65 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
         }
         options.OutputMinMaxFilePath = std::string(argv[++i]);
         break;
+      case CLIParameters::LearnRate:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        try {
+          options.LearnRate = std::stod(std::string(argv[++i]));
+        } catch (std::exception const&) {
+          std::cout << "Could not parse " << std::string(argv[i]) << " to double." << std::endl;
+          return std::nullopt;
+        }
+        break;
+      case CLIParameters::TimeoutMinutes:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        try {
+          auto minutes = std::stoul(argv[++i]);
+          options.MaxExecutionTime = std::chrono::duration_cast<TimeoutDuration>(std::chrono::minutes(minutes));
+        } catch (const std::invalid_argument& e) {
+          std::cout << "Could not convert " << std::string(argv[i]) << " to integer. Reason: " << e.what() << std::endl;
+          return std::nullopt;
+        } catch (const std::out_of_range& e) {
+          std::cout << std::string(argv[i]) << " is out of range. Error: " << e.what() << std::endl;
+          return std::nullopt;
+        }
+        break;
+      case CLIParameters::TimeoutHours:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        try {
+          auto hours = std::stoul(argv[++i]);
+          options.MaxExecutionTime = std::chrono::duration_cast<TimeoutDuration>(std::chrono::hours(hours));
+        } catch (const std::invalid_argument& e) {
+          std::cout << "Could not convert " << std::string(argv[i]) << " to integer. Reason: " << e.what() << std::endl;
+          return std::nullopt;
+        } catch (const std::out_of_range& e) {
+          std::cout << std::string(argv[i]) << " is out of range. Error: " << e.what() << std::endl;
+          return std::nullopt;
+        }
+        break;
+      case CLIParameters::NumberOfDeteriorations:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        try {
+          options.NumberOfDeteriorations = std::stoul(argv[++i]);
+        } catch (const std::invalid_argument& e) {
+          std::cout << "Could not convert " << std::string(argv[i]) << " to integer. Reason: " << e.what() << std::endl;
+          return std::nullopt;
+        } catch (const std::out_of_range& e) {
+          std::cout << std::string(argv[i]) << " is out of range. Error: " << e.what() << std::endl;
+          return std::nullopt;
+        }
+        break;
     }
   }
 

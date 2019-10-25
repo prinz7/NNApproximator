@@ -8,27 +8,31 @@
 namespace Utilities {
 
 using FilePath = std::string;
+using TimeoutDuration = std::chrono::milliseconds;
 
 namespace DefaultValues {
 
-const FilePath INPUT_DATA_FILE_PATH = {};
-const FilePath INPUT_NETWORK_PARAMETERS = {};
-const FilePath OUTPUT_NETWORK_PARAMETERS = {};
-const uint32_t NUMBER_OF_INPUT_VARIABLES = 1;
-const uint32_t NUMBER_OF_OUTPUT_VARIABLES = 1;
-const uint32_t NUMBER_OF_EPOCHS = 10;
-const bool     SHOW_PROGRESS_DURING_TRAINING = true;
-const bool     INTERACTIVE_MODE = false;
-const double   EPSILON = 1.0;
-const bool     LOG_SCALING = false;
-const bool     VALIDATE_AFTER_TRAINING = false;
-const double   VALIDATION_PERCENTAGE = 30.0;
-const FilePath OUTPUT_VALUE = {};
-const FilePath OUTPUT_DIFF = {};
-const bool     PRINT_BEHAVIOUR = false;
-const int32_t  NUMBER_OF_THREADS = torch::get_num_threads();
-const FilePath INPUT_MIN_MAX_FILE_PATH = {};
-const FilePath OUTPUT_MIN_MAX_FILE_PATH = {};
+const FilePath        INPUT_DATA_FILE_PATH = {};
+const FilePath        INPUT_NETWORK_PARAMETERS = {};
+const FilePath        OUTPUT_NETWORK_PARAMETERS = {};
+const uint32_t        NUMBER_OF_INPUT_VARIABLES = 1;
+const uint32_t        NUMBER_OF_OUTPUT_VARIABLES = 1;
+const uint32_t        NUMBER_OF_EPOCHS = 10;
+const bool            SHOW_PROGRESS_DURING_TRAINING = true;
+const bool            INTERACTIVE_MODE = false;
+const double          EPSILON = 1.0;
+const bool            LOG_SCALING = false;
+const bool            VALIDATE_AFTER_TRAINING = false;
+const double          VALIDATION_PERCENTAGE = 30.0;
+const FilePath        OUTPUT_VALUE = {};
+const FilePath        OUTPUT_DIFF = {};
+const bool            PRINT_BEHAVIOUR = false;
+const int32_t         NUMBER_OF_THREADS = torch::get_num_threads();
+const FilePath        INPUT_MIN_MAX_FILE_PATH = {};
+const FilePath        OUTPUT_MIN_MAX_FILE_PATH = {};
+const double          LEARN_RATE = 0.001;
+const TimeoutDuration MAX_EXECUTION_TIME = std::chrono::duration_cast<TimeoutDuration>(std::chrono::hours(24 * 7)); // TODO change to std::chrono::weeks when switching to C++20
+const uint32_t        NUMBER_OF_DETERIORATIONS = 0;
 
 const std::string CLI_HELP_TEXT = {
   std::string("List of possible commandline parameters:\n") +
@@ -36,7 +40,7 @@ const std::string CLI_HELP_TEXT = {
   "--input <filepath> | -i <filepath> : Use content of <filepath> for the input data.\n" +
   "--numberIn X | -ni X               : Sets the number of input variables to X. Default: " + std::to_string(NUMBER_OF_INPUT_VARIABLES) + "\n" +
   "--numberOut X | -no X              : Sets the number of output variables to X. Default: " + std::to_string(NUMBER_OF_OUTPUT_VARIABLES) + "\n" +
-  "--epochs X | -e X                  : Sets the number of epochs (how many times the data is used for training). Default: " + std::to_string(NUMBER_OF_EPOCHS) + "\n" +
+  "--epochs X | -e X                  : Sets the minimum number of epochs (how many times the data is used for training). Default: " + std::to_string(NUMBER_OF_EPOCHS) + "\n" +
   "--showProgress <bool>              : Activate or deactivate display of progress and eta of the training. Default: " + (SHOW_PROGRESS_DURING_TRAINING ? "true" : "false") + "\n" +
   "--inWeights <filepath>             : If set loads the weights in the file for the network in the initialization phase.\n" +
   "--outWeights <filepath>            : If set saves the weights of the network to the specified file after the training phase.\n" +
@@ -50,7 +54,11 @@ const std::string CLI_HELP_TEXT = {
   "--printBehaviour                   : If set outputs the behaviour of the neural network to the console for the given input values.\n" +
   "--threads X | -t X                 : Sets the number of used threads to X. Default value depends on the given system. Default value of the current system: " + std::to_string(NUMBER_OF_THREADS) + "\n" +
   "--inMinMax <filepath>              : If set uses the data in the given file to use as min/max values to normalization.\n" +
-  "--outMinMax <filepath>             : If set saves the used min/max values to the given file.\n"
+  "--outMinMax <filepath>             : If set saves the used min/max values to the given file.\n" +
+  "--learnRate <double>               : Sets the learning rate of the statistical gradient descent. Default: " + std::to_string(LEARN_RATE) + "\n" +
+  "--timeoutInMinutes X               : Sets the timeout of the program to X minutes. Default: 1 week.\n" +
+  "--timeoutInHours X                 : Sets the timeout of the program to X hours. Default: 1 week.\n" +
+  "--numberOfDeteriorations X         : Sets the number of epochs in a row in which the improvement can be worse than the set epsilon without stopping. Default: " + std::to_string(NUMBER_OF_DETERIORATIONS) + "\n"
 };
 
 }
@@ -59,58 +67,65 @@ enum class CLIParameters
 {
   Help, InputFilePath, NumberOfInputVariables, NumberOfOutputVariables, NumberOfEpochs, ShowProgressDuringTraining, InputNetworkParameters,
   OutputNetworkParameters, Interactive, Epsilon, LogScaling, Validate, ValidatePercentage, OutValues, OutDiff, PrintBehaviour, Threads,
-  InputMinMax, OutputMinMax
+  InputMinMax, OutputMinMax, LearnRate, TimeoutMinutes, TimeoutHours, NumberOfDeteriorations
 };
 
 const std::map<std::string, CLIParameters> CLIParameterMap {
-  {"--help",              CLIParameters::Help},
-  {"-h",                  CLIParameters::Help},
-  {"--input",             CLIParameters::InputFilePath},
-  {"-i",                  CLIParameters::InputFilePath},
-  {"--numberIn",          CLIParameters::NumberOfInputVariables},
-  {"-ni",                 CLIParameters::NumberOfInputVariables},
-  {"--numberOut",         CLIParameters::NumberOfOutputVariables},
-  {"-no",                 CLIParameters::NumberOfOutputVariables},
-  {"--epochs",            CLIParameters::NumberOfEpochs},
-  {"-e",                  CLIParameters::NumberOfEpochs},
-  {"--showProgress",      CLIParameters::ShowProgressDuringTraining},
-  {"--inWeights",         CLIParameters::InputNetworkParameters},
-  {"--outWeights",        CLIParameters::OutputNetworkParameters},
-  {"--interactive",       CLIParameters::Interactive},
-  {"--epsilon",           CLIParameters::Epsilon},
-  {"--logScaling",        CLIParameters::LogScaling},
-  {"--validate",          CLIParameters::Validate},
-  {"--validatePercentage",CLIParameters::ValidatePercentage},
-  {"--outValues",         CLIParameters::OutValues},
-  {"--outDiff",           CLIParameters::OutDiff},
-  {"--printBehaviour",    CLIParameters::PrintBehaviour},
-  {"--threads",           CLIParameters::Threads},
-  {"-t",                  CLIParameters::Threads},
-  {"--inMinMax",          CLIParameters::InputMinMax},
-  {"--outMinMax",         CLIParameters::OutputMinMax}
+  {"--help",                  CLIParameters::Help},
+  {"-h",                      CLIParameters::Help},
+  {"--input",                 CLIParameters::InputFilePath},
+  {"-i",                      CLIParameters::InputFilePath},
+  {"--numberIn",              CLIParameters::NumberOfInputVariables},
+  {"-ni",                     CLIParameters::NumberOfInputVariables},
+  {"--numberOut",             CLIParameters::NumberOfOutputVariables},
+  {"-no",                     CLIParameters::NumberOfOutputVariables},
+  {"--epochs",                CLIParameters::NumberOfEpochs},
+  {"-e",                      CLIParameters::NumberOfEpochs},
+  {"--showProgress",          CLIParameters::ShowProgressDuringTraining},
+  {"--inWeights",             CLIParameters::InputNetworkParameters},
+  {"--outWeights",            CLIParameters::OutputNetworkParameters},
+  {"--interactive",           CLIParameters::Interactive},
+  {"--epsilon",               CLIParameters::Epsilon},
+  {"--logScaling",            CLIParameters::LogScaling},
+  {"--validate",              CLIParameters::Validate},
+  {"--validatePercentage",    CLIParameters::ValidatePercentage},
+  {"--outValues",             CLIParameters::OutValues},
+  {"--outDiff",               CLIParameters::OutDiff},
+  {"--printBehaviour",        CLIParameters::PrintBehaviour},
+  {"--threads",               CLIParameters::Threads},
+  {"-t",                      CLIParameters::Threads},
+  {"--inMinMax",              CLIParameters::InputMinMax},
+  {"--outMinMax",             CLIParameters::OutputMinMax},
+  {"--learnRate",             CLIParameters::LearnRate},
+  {"--timeoutInMinutes",      CLIParameters::TimeoutMinutes},
+  {"--timeoutInHours",        CLIParameters::TimeoutHours},
+  {"--numberOfDeteriorations",CLIParameters::NumberOfDeteriorations}
 };
 
 class ProgramOptions
 {
 public:
-  FilePath InputDataFilePath {          DefaultValues::INPUT_DATA_FILE_PATH };
-  FilePath InputNetworkParameters {     DefaultValues::INPUT_NETWORK_PARAMETERS };
-  FilePath OutputNetworkParameters {    DefaultValues::OUTPUT_NETWORK_PARAMETERS };
-  uint32_t NumberOfInputVariables {     DefaultValues::NUMBER_OF_INPUT_VARIABLES };
-  uint32_t NumberOfOutputVariables {    DefaultValues::NUMBER_OF_OUTPUT_VARIABLES };
-  uint32_t NumberOfEpochs {             DefaultValues::NUMBER_OF_EPOCHS };
-  bool     ShowProgressDuringTraining { DefaultValues::SHOW_PROGRESS_DURING_TRAINING };
-  bool     InteractiveMode {            DefaultValues::INTERACTIVE_MODE };
-  double   Epsilon {                    DefaultValues::EPSILON };
-  bool     LogScaling {                 DefaultValues::LOG_SCALING };
-  bool     ValidateAfterTraining {      DefaultValues::VALIDATE_AFTER_TRAINING };
-  double   ValidationPercentage {       DefaultValues::VALIDATION_PERCENTAGE };
-  FilePath OutputValuesFilePath {       DefaultValues::OUTPUT_VALUE };
-  FilePath OutputDiffFilePath {         DefaultValues::OUTPUT_DIFF };
-  bool     PrintBehaviour {             DefaultValues::PRINT_BEHAVIOUR };
-  int32_t  NumberOfThreads {            DefaultValues::NUMBER_OF_THREADS };
-  FilePath InputMinMaxFilePath {        DefaultValues::INPUT_MIN_MAX_FILE_PATH };
-  FilePath OutputMinMaxFilePath {       DefaultValues::OUTPUT_MIN_MAX_FILE_PATH };
+  FilePath        InputDataFilePath {          DefaultValues::INPUT_DATA_FILE_PATH };
+  FilePath        InputNetworkParameters {     DefaultValues::INPUT_NETWORK_PARAMETERS };
+  FilePath        OutputNetworkParameters {    DefaultValues::OUTPUT_NETWORK_PARAMETERS };
+  uint32_t        NumberOfInputVariables {     DefaultValues::NUMBER_OF_INPUT_VARIABLES };
+  uint32_t        NumberOfOutputVariables {    DefaultValues::NUMBER_OF_OUTPUT_VARIABLES };
+  uint32_t        NumberOfEpochs {             DefaultValues::NUMBER_OF_EPOCHS };
+  bool            ShowProgressDuringTraining { DefaultValues::SHOW_PROGRESS_DURING_TRAINING };
+  bool            InteractiveMode {            DefaultValues::INTERACTIVE_MODE };
+  double          Epsilon {                    DefaultValues::EPSILON };
+  bool            LogScaling {                 DefaultValues::LOG_SCALING };
+  bool            ValidateAfterTraining {      DefaultValues::VALIDATE_AFTER_TRAINING };
+  double          ValidationPercentage {       DefaultValues::VALIDATION_PERCENTAGE };
+  FilePath        OutputValuesFilePath {       DefaultValues::OUTPUT_VALUE };
+  FilePath        OutputDiffFilePath {         DefaultValues::OUTPUT_DIFF };
+  bool            PrintBehaviour {             DefaultValues::PRINT_BEHAVIOUR };
+  int32_t         NumberOfThreads {            DefaultValues::NUMBER_OF_THREADS };
+  FilePath        InputMinMaxFilePath {        DefaultValues::INPUT_MIN_MAX_FILE_PATH };
+  FilePath        OutputMinMaxFilePath {       DefaultValues::OUTPUT_MIN_MAX_FILE_PATH };
+  double          LearnRate {                  DefaultValues::LEARN_RATE };
+  TimeoutDuration MaxExecutionTime {           DefaultValues::MAX_EXECUTION_TIME };
+  uint32_t        NumberOfDeteriorations {     DefaultValues::NUMBER_OF_DETERIORATIONS };
 };
 
 }

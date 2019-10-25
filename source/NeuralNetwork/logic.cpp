@@ -128,14 +128,14 @@ void Logic::normalizeWithFileData(DataVector& data, DataVector const& fileMinMax
   }
 }
 
-void Logic::trainNetwork(const DataVector& data)
+void Logic::trainNetwork(DataVector const& data)
 {
   if (data.empty()) {
     return;
   }
   DataVector randomlyShuffledData(data);
-  const auto& numberOfEpochs = options.NumberOfEpochs;
-  torch::optim::SGD optimizer(network->parameters(), 0.000001); // TODO fix hardcoded value
+  auto const& numberOfEpochs = options.NumberOfEpochs;
+  torch::optim::SGD optimizer(network->parameters(), options.LearnRate);
 
 //  std::random_device rd;
 //  std::mt19937 g(rd());
@@ -145,20 +145,18 @@ void Logic::trainNetwork(const DataVector& data)
   auto start = std::chrono::steady_clock::now();
 
   bool continueTraining = true;
-  int32_t numberOfDeteriorationsInRow = 0;
-
-  auto maxExecutionTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::hours(24));  // TODO remove or use parameter
+  uint32_t numberOfDeteriorationsInRow = 0;
 
   for (uint32_t epoch = 1; epoch <= numberOfEpochs || continueTraining; ++epoch) {
 //    std::shuffle(randomlyShuffledData.begin(), randomlyShuffledData.end(), g);
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
+    auto elapsed = std::chrono::duration_cast<Utilities::TimeoutDuration>(std::chrono::steady_clock::now() - start);
     auto remaining = ((elapsed / std::max(epoch - 1, 1u)) * (numberOfEpochs - epoch + 1));
     lastMeanError = currentMeanError;
     currentMeanError = calculateMeanError(data);
 
     if (lastMeanError - currentMeanError < options.Epsilon) {
       ++numberOfDeteriorationsInRow;
-      if (numberOfDeteriorationsInRow > 3) {
+      if (numberOfDeteriorationsInRow > options.NumberOfDeteriorations) {
         continueTraining = false;
       }
     } else {
@@ -178,7 +176,7 @@ void Logic::trainNetwork(const DataVector& data)
       }
     }
 
-    if (elapsed > maxExecutionTime) {
+    if (elapsed > options.MaxExecutionTime) {
       std::cout << "\nStop execution (timeout)." << std::endl;
       break;
     }
