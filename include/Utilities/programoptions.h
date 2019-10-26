@@ -33,6 +33,7 @@ const FilePath        OUTPUT_MIN_MAX_FILE_PATH = {};
 const double          LEARN_RATE = 0.001;
 const TimeoutDuration MAX_EXECUTION_TIME = std::chrono::duration_cast<TimeoutDuration>(std::chrono::hours(24 * 7)); // TODO change to std::chrono::weeks when switching to C++20
 const uint32_t        NUMBER_OF_DETERIORATIONS = 0;
+const FilePath        PROGRESS_FILE_PATH = {};
 
 const std::string CLI_HELP_TEXT = {
   std::string("List of possible commandline parameters:\n") +
@@ -58,7 +59,8 @@ const std::string CLI_HELP_TEXT = {
   "--learnRate <double>               : Sets the learning rate of the statistical gradient descent. Default: " + std::to_string(LEARN_RATE) + "\n" +
   "--timeoutInMinutes X               : Sets the timeout of the program to X minutes. Default: 1 week.\n" +
   "--timeoutInHours X                 : Sets the timeout of the program to X hours. Default: 1 week.\n" +
-  "--numberOfDeteriorations X         : Sets the number of epochs in a row in which the improvement can be worse than the set epsilon without stopping. Default: " + std::to_string(NUMBER_OF_DETERIORATIONS) + "\n"
+  "--numberOfDeteriorations X         : Sets the number of epochs in a row in which the improvement can be worse than the set epsilon without stopping. Default: " + std::to_string(NUMBER_OF_DETERIORATIONS) + "\n" +
+  "--saveProgress <filepath>          : If set saves the progress in a CSV file at the specified path.\n"
 };
 
 }
@@ -67,7 +69,7 @@ enum class CLIParameters
 {
   Help, InputFilePath, NumberOfInputVariables, NumberOfOutputVariables, NumberOfEpochs, ShowProgressDuringTraining, InputNetworkParameters,
   OutputNetworkParameters, Interactive, Epsilon, LogScaling, Validate, ValidatePercentage, OutValues, OutDiff, PrintBehaviour, Threads,
-  InputMinMax, OutputMinMax, LearnRate, TimeoutMinutes, TimeoutHours, NumberOfDeteriorations
+  InputMinMax, OutputMinMax, LearnRate, TimeoutMinutes, TimeoutHours, NumberOfDeteriorations, SaveProgress
 };
 
 const std::map<std::string, CLIParameters> CLIParameterMap {
@@ -99,7 +101,8 @@ const std::map<std::string, CLIParameters> CLIParameterMap {
   {"--learnRate",             CLIParameters::LearnRate},
   {"--timeoutInMinutes",      CLIParameters::TimeoutMinutes},
   {"--timeoutInHours",        CLIParameters::TimeoutHours},
-  {"--numberOfDeteriorations",CLIParameters::NumberOfDeteriorations}
+  {"--numberOfDeteriorations",CLIParameters::NumberOfDeteriorations},
+  {"--saveProgress",          CLIParameters::SaveProgress}
 };
 
 class ProgramOptions
@@ -126,6 +129,7 @@ public:
   double          LearnRate {                  DefaultValues::LEARN_RATE };
   TimeoutDuration MaxExecutionTime {           DefaultValues::MAX_EXECUTION_TIME };
   uint32_t        NumberOfDeteriorations {     DefaultValues::NUMBER_OF_DETERIORATIONS };
+  FilePath        SaveProgressFilePath {       DefaultValues::PROGRESS_FILE_PATH };
 };
 
 }

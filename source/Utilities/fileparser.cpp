@@ -80,4 +80,20 @@ void FileParser::SaveData(DataVector const& data, std::string const& outputFileP
   outputFile.close();
 }
 
+void FileParser::SaveProgressData(ProgressVector const& data, std::string const& filePath)
+{
+  if (data.empty()) {
+    return;
+  }
+  std::ofstream outputFile(filePath);
+
+  outputFile << LEARN_PROGRESS_FILE_HEADER << "\n";
+
+  for (auto const& [epoch, r2score, meanSquaredError, elapsedTimeInMS] : data) {
+    outputFile << epoch << ", " << r2score << ", " << meanSquaredError << ", " << elapsedTimeInMS << "\n";
+  }
+
+  outputFile.close();
+}
+
 }

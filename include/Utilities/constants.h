@@ -3,11 +3,31 @@
 #include <torch/torch.h>
 #include <vector>
 
+// Forward declarations:
+
+class LearnProgressDataSet;
+
+// Type definitions & constants:
+
 using TensorDataType = double;
 const torch::ScalarType TORCH_DATA_TYPE = torch::kDouble;
 
 using DataVector = std::vector<std::pair<torch::Tensor, torch::Tensor>>;
 using MinMaxVector = std::vector<std::pair<TensorDataType, TensorDataType>>;
+
+using ProgressVector = std::vector<LearnProgressDataSet>;
+const std::string LEARN_PROGRESS_FILE_HEADER = "Epoch, R2Score, MeanSquaredError, ElapsedTimeInMS";
+
+// Data classes:
+
+class LearnProgressDataSet
+{
+public:
+  uint32_t epoch;
+  double r2Score;
+  double meanSquaredError;
+  uint64_t elapsedTimeInMS;
+};
 
 // Helper functions:
 

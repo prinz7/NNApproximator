@@ -77,6 +77,10 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     saveDiffToFile(*dataOpt, options.OutputDiffFilePath);
   }
 
+  if (options.SaveProgressFilePath != Utilities::DefaultValues::PROGRESS_FILE_PATH) {
+    Utilities::FileParser::SaveProgressData(trainingProgress, options.SaveProgressFilePath);
+  }
+
   // Output behaviour of network:
   if (options.PrintBehaviour) {
     if (options.ValidateAfterTraining) {
@@ -133,8 +137,11 @@ void Logic::trainNetwork(DataVector const& data)
   if (data.empty()) {
     return;
   }
+
   DataVector randomlyShuffledData(data);
   auto const& numberOfEpochs = options.NumberOfEpochs;
+  bool saveProgress = options.SaveProgressFilePath != Utilities::DefaultValues::PROGRESS_FILE_PATH;
+
   torch::optim::SGD optimizer(network->parameters(), options.LearnRate);
 
 //  std::random_device rd;
@@ -142,10 +149,11 @@ void Logic::trainNetwork(DataVector const& data)
 
   auto lastMeanError = calculateMeanError(data);
   auto currentMeanError = lastMeanError;
-  auto start = std::chrono::steady_clock::now();
 
   bool continueTraining = true;
   uint32_t numberOfDeteriorationsInRow = 0;
+
+  auto start = std::chrono::steady_clock::now();
 
   for (uint32_t epoch = 1; epoch <= numberOfEpochs || continueTraining; ++epoch) {
 //    std::shuffle(randomlyShuffledData.begin(), randomlyShuffledData.end(), g);
@@ -163,15 +171,23 @@ void Logic::trainNetwork(DataVector const& data)
       numberOfDeteriorationsInRow = 0;
     }
 
+    if (saveProgress) {
+      auto r2score = calculateR2ScoreAlternate(data);
+      trainingProgress.emplace_back(LearnProgressDataSet{
+        epoch,
+        r2score,
+        currentMeanError,
+        static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count())
+      });
+    }
+
     if (options.ShowProgressDuringTraining) {
       if (epoch > numberOfEpochs) {
         std::cout << "\rContinue training. Mean squared error changed from " << lastMeanError << " to " << currentMeanError << " -- epoch: " << epoch;
         std::flush(std::cout);
       } else {
-        std::cout << "\rEpoch " << epoch << " of " << numberOfEpochs << ". Current mean squared error: " << currentMeanError << " previous: "
-                  << lastMeanError <<
-                  " -- Remaining time: " << formatDuration<std::chrono::milliseconds, std::chrono::hours, std::chrono::minutes, std::chrono::seconds>(
-          remaining); // TODO better output
+        std::cout << "\rEpoch " << epoch << " of " << numberOfEpochs << ". Current mean squared error: " << currentMeanError << " previous: " << lastMeanError <<
+                  " -- Remaining time: " << formatDuration<std::chrono::milliseconds, std::chrono::hours, std::chrono::minutes, std::chrono::seconds>(remaining); // TODO better output
         std::flush(std::cout);
       }
     }

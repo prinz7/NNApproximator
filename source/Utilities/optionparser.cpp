@@ -239,6 +239,13 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
           return std::nullopt;
         }
         break;
+      case CLIParameters::SaveProgress:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        options.SaveProgressFilePath = std::string(argv[++i]);
+        break;
     }
   }
 

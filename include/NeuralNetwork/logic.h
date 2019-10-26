@@ -42,6 +42,8 @@ private:
   MinMaxVector& outputMinMax = minMax.second;
 
   std::string inputFileHeader{};
+
+  ProgressVector trainingProgress{};
 };
 
 }
