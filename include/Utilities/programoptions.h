@@ -54,7 +54,7 @@ const std::string CLI_HELP_TEXT = {
   "--outDiff <filepath>               : If set saves the difference of the output of the neural network and given input values to the specified file.\n" +
   "--printBehaviour                   : If set outputs the behaviour of the neural network to the console for the given input values.\n" +
   "--threads X | -t X                 : Sets the number of used threads to X. Default value depends on the given system. Default value of the current system: " + std::to_string(NUMBER_OF_THREADS) + "\n" +
-  "--inMinMax <filepath>              : If set uses the data in the given file to use as min/max values to normalization.\n" +
+  "--inMinMax <filepath>              : If set uses the data in the given file to use as min/max values for normalization.\n" +
   "--outMinMax <filepath>             : If set saves the used min/max values to the given file.\n" +
   "--learnRate <double>               : Sets the learning rate of the statistical gradient descent. Default: " + std::to_string(LEARN_RATE) + "\n" +
   "--timeoutInMinutes X               : Sets the timeout of the program to X minutes. Default: 1 week.\n" +
