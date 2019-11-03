@@ -117,7 +117,18 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
         }
         break;
       case CLIParameters::LogScaling:
+        if (options.SqrtScaling) {
+          std::cout << "Logarithmic scaling and square root scaling cannot be used together." << std::endl;
+          return std::nullopt;
+        }
         options.LogScaling = true;
+        break;
+      case CLIParameters::SqrtScaling:
+        if (options.LogScaling) {
+          std::cout << "Logarithmic scaling and square root scaling cannot be used together." << std::endl;
+          return std::nullopt;
+        }
+        options.SqrtScaling = true;
         break;
       case CLIParameters::Validate:
         options.ValidateAfterTraining = true;

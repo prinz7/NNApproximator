@@ -13,6 +13,9 @@ public:
 
   static void ScaleLogarithmic(torch::Tensor& data);
   static void UnscaleLogarithmic(torch::Tensor& data);
+
+  static void ScaleSquareRoot(torch::Tensor& data);
+  static void UnscaleSquareRoot(torch::Tensor& data);
 };
 
 }

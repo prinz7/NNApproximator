@@ -25,6 +25,13 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     }
   }
 
+  if (options.SqrtScaling) {
+    for (auto& [inputTensor, outputTensor] : *dataOpt) {
+      (void) inputTensor;
+      Utilities::DataNormalizator::ScaleSquareRoot(outputTensor);
+    }
+  }
+
   if (options.InputMinMaxFilePath != Utilities::DefaultValues::INPUT_MIN_MAX_FILE_PATH) {
     std::string fileHeader{};
     auto minMaxOpt = Utilities::FileParser::ParseInputFile(options.InputMinMaxFilePath, options.NumberOfInputVariables,
@@ -245,8 +252,12 @@ void Logic::performInteractiveMode()
       auto output = network->forward(inTensor);
       auto dOutputTensor = output.clone();
       Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, true);
+
       if (options.LogScaling) {
         Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
+      }
+      if (options.SqrtScaling) {
+        Utilities::DataNormalizator::UnscaleSquareRoot(dOutputTensor);
       }
 
       std::cout << "Normalized input: ";
@@ -360,6 +371,9 @@ double Logic::calculateR2ScoreAlternateDenormalized(DataVector const& testData)
     if (options.LogScaling) {
       Utilities::DataNormalizator::UnscaleLogarithmic(yD);
     }
+    if (options.SqrtScaling) {
+      Utilities::DataNormalizator::UnscaleSquareRoot(yD);
+    }
 
     y_cross += yD[0].item<TensorDataType>();
   }
@@ -374,6 +388,10 @@ double Logic::calculateR2ScoreAlternateDenormalized(DataVector const& testData)
     if (options.LogScaling) {
       Utilities::DataNormalizator::UnscaleLogarithmic(yD);
       Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
+    }
+    if (options.SqrtScaling) {
+      Utilities::DataNormalizator::UnscaleSquareRoot(yD);
+      Utilities::DataNormalizator::UnscaleSquareRoot(prediction);
     }
 
     TensorDataType yi = yD[0].item<TensorDataType>();
@@ -426,6 +444,10 @@ void Logic::outputBehaviour(DataVector const& data)
       Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
       Utilities::DataNormalizator::UnscaleLogarithmic(dPrediction);
     }
+    if (options.SqrtScaling) {
+      Utilities::DataNormalizator::UnscaleSquareRoot(dOutputTensor);
+      Utilities::DataNormalizator::UnscaleSquareRoot(dPrediction);
+    }
 
     std::cout << "\nx: ";
     for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) std::cout << inputTensor[i].item<TensorDataType>() << " (" << dInputTensor[i].item<TensorDataType>() << ") ";
@@ -453,6 +475,9 @@ void Logic::saveValuesToFile(DataVector const& data, std::string const& path)
     if (options.LogScaling) {
       Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
     }
+    if (options.SqrtScaling) {
+      Utilities::DataNormalizator::UnscaleSquareRoot(prediction);
+    }
 
     values[i++] = std::make_pair(dInputTensor, prediction);
   }
@@ -477,6 +502,10 @@ void Logic::saveDiffToFile(DataVector const& data, std::string const& path)
     if (options.LogScaling) {
       Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
       Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
+    }
+    if (options.SqrtScaling) {
+      Utilities::DataNormalizator::UnscaleSquareRoot(dOutputTensor);
+      Utilities::DataNormalizator::UnscaleSquareRoot(prediction);
     }
 
     diff[i++] = std::make_pair(dInputTensor, calculateDiff(dOutputTensor, prediction));

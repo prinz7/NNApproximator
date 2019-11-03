@@ -22,6 +22,7 @@ const bool            SHOW_PROGRESS_DURING_TRAINING = true;
 const bool            INTERACTIVE_MODE = false;
 const double          EPSILON = 1.0;
 const bool            LOG_SCALING = false;
+const bool            SQRT_SCALING = false;
 const bool            VALIDATE_AFTER_TRAINING = false;
 const double          VALIDATION_PERCENTAGE = 30.0;
 const FilePath        OUTPUT_VALUE = {};
@@ -47,7 +48,8 @@ const std::string CLI_HELP_TEXT = {
   "--outWeights <filepath>            : If set saves the weights of the network to the specified file after the training phase.\n" +
   "--interactive                      : If set activated the interactive mode after the training to test user input on the neural network.\n" +
   "--epsilon <double>                 : If set continues training after the last epoch until the improvement of the mean squarred error is less than the set epsilon. Default: " + std::to_string(EPSILON) + "\n" +
-  "--logScaling                       : If set scales the output values logarithmic for the neural network.\n" +
+  "--logScaling                       : If set scales the output values logarithmic for the neural network. Does not work together with --sqrtScaling.\n" +
+  "--sqrtScaling                      : If set scales the output values with the square root function for the neural network. Does not work together with --logScaling.\n" +
   "--validate                         : If set splits the data set in a training and validation set. After the training the network is tested with the validation set.\n" +
   "--validatePercentage <double>      : Sets the percentage of the data, which is only used for validation and not for training. Value should be between 0 and 100. Default: " + std::to_string(VALIDATION_PERCENTAGE) + "\n" +
   "--outValues <filepath>             : If set saves the output of the neural network for all input values to the specified file.\n" +
@@ -68,8 +70,8 @@ const std::string CLI_HELP_TEXT = {
 enum class CLIParameters
 {
   Help, InputFilePath, NumberOfInputVariables, NumberOfOutputVariables, NumberOfEpochs, ShowProgressDuringTraining, InputNetworkParameters,
-  OutputNetworkParameters, Interactive, Epsilon, LogScaling, Validate, ValidatePercentage, OutValues, OutDiff, PrintBehaviour, Threads,
-  InputMinMax, OutputMinMax, LearnRate, TimeoutMinutes, TimeoutHours, NumberOfDeteriorations, SaveProgress
+  OutputNetworkParameters, Interactive, Epsilon, LogScaling, SqrtScaling, Validate, ValidatePercentage, OutValues, OutDiff, PrintBehaviour,
+  Threads, InputMinMax, OutputMinMax, LearnRate, TimeoutMinutes, TimeoutHours, NumberOfDeteriorations, SaveProgress
 };
 
 const std::map<std::string, CLIParameters> CLIParameterMap {
@@ -89,6 +91,7 @@ const std::map<std::string, CLIParameters> CLIParameterMap {
   {"--interactive",           CLIParameters::Interactive},
   {"--epsilon",               CLIParameters::Epsilon},
   {"--logScaling",            CLIParameters::LogScaling},
+  {"--sqrtScaling",           CLIParameters::SqrtScaling},
   {"--validate",              CLIParameters::Validate},
   {"--validatePercentage",    CLIParameters::ValidatePercentage},
   {"--outValues",             CLIParameters::OutValues},
@@ -118,6 +121,7 @@ public:
   bool            InteractiveMode {            DefaultValues::INTERACTIVE_MODE };
   double          Epsilon {                    DefaultValues::EPSILON };
   bool            LogScaling {                 DefaultValues::LOG_SCALING };
+  bool            SqrtScaling {                DefaultValues::SQRT_SCALING };
   bool            ValidateAfterTraining {      DefaultValues::VALIDATE_AFTER_TRAINING };
   double          ValidationPercentage {       DefaultValues::VALIDATION_PERCENTAGE };
   FilePath        OutputValuesFilePath {       DefaultValues::OUTPUT_VALUE };

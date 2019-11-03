@@ -80,4 +80,21 @@ void DataNormalizator::UnscaleLogarithmic(torch::Tensor& data)
   }
 }
 
+void DataNormalizator::ScaleSquareRoot(torch::Tensor& data)
+{
+  for (int64_t i = 0; i < data.size(0); ++i) {
+    if (data[i].item<TensorDataType>() < MINIMUM_ALLOWED_VALUE) {
+      data[i] = MINIMUM_ALLOWED_VALUE;
+    }
+    data[i] = std::sqrt(data[i].item<TensorDataType>());
+  }
+}
+
+void DataNormalizator::UnscaleSquareRoot(torch::Tensor& data)
+{
+  for (int64_t i = 0; i < data.size(0); ++i) {
+    data[i] = std::pow(data[i].item<TensorDataType>(), 2.0);
+  }
+}
+
 }
