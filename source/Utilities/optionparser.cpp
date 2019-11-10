@@ -311,6 +311,9 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
     return std::nullopt;
   }
 
+  // Change index range from [1, ...] to [0, ...]
+  options.MixedScalingInputVariable--;
+
   return std::make_optional(options);
 }
 
