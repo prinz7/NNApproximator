@@ -117,18 +117,64 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
         }
         break;
       case CLIParameters::LogScaling:
-        if (options.SqrtScaling) {
-          std::cout << "Logarithmic scaling and square root scaling cannot be used together." << std::endl;
+        if (options.SqrtScaling || options.LogLinScaling || options.LogSqrtScaling) {
+          std::cout << "Only one scaling option is allowed." << std::endl;
           return std::nullopt;
         }
         options.LogScaling = true;
         break;
       case CLIParameters::SqrtScaling:
-        if (options.LogScaling) {
-          std::cout << "Logarithmic scaling and square root scaling cannot be used together." << std::endl;
+        if (options.LogScaling || options.LogLinScaling || options.LogSqrtScaling) {
+          std::cout << "Only one scaling option is allowed." << std::endl;
           return std::nullopt;
         }
         options.SqrtScaling = true;
+        break;
+      case CLIParameters::LogLinScaling:
+        if (i + 2 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        if (options.LogScaling || options.SqrtScaling || options.LogSqrtScaling) {
+          std::cout << "Only one scaling option is allowed." << std::endl;
+          return std::nullopt;
+        }
+        try {
+          options.MixedScalingInputVariable = std::stoi(std::string(argv[++i]));
+        } catch (std::exception const&) {
+          std::cout << "Could not parse " << std::string(argv[i]) << " to int." << std::endl;
+          return std::nullopt;
+        }
+        try {
+          options.MixedScalingThreshold = std::stod(std::string(argv[++i]));
+        } catch (std::exception const&) {
+          std::cout << "Could not parse " << std::string(argv[i]) << " to double." << std::endl;
+          return std::nullopt;
+        }
+        options.LogLinScaling = true;
+        break;
+      case CLIParameters::LogSqrtScaling:
+        if (i + 2 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        if (options.LogScaling || options.SqrtScaling || options.LogLinScaling) {
+          std::cout << "Only one scaling option is allowed." << std::endl;
+          return std::nullopt;
+        }
+        try {
+          options.MixedScalingInputVariable = std::stoi(std::string(argv[++i]));
+        } catch (std::exception const&) {
+          std::cout << "Could not parse " << std::string(argv[i]) << " to int." << std::endl;
+          return std::nullopt;
+        }
+        try {
+          options.MixedScalingThreshold = std::stod(std::string(argv[++i]));
+        } catch (std::exception const&) {
+          std::cout << "Could not parse " << std::string(argv[i]) << " to double." << std::endl;
+          return std::nullopt;
+        }
+        options.LogSqrtScaling = true;
         break;
       case CLIParameters::Validate:
         options.ValidateAfterTraining = true;
@@ -258,6 +304,11 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
         options.SaveProgressFilePath = std::string(argv[++i]);
         break;
     }
+  }
+
+  if (options.MixedScalingInputVariable > options.NumberOfInputVariables) {
+    std::cout << "Inputvariable " << options.MixedScalingInputVariable << " is not usable for mixed scaling, because there are only " << options.NumberOfInputVariables << " variables available." << std::endl;
+    return std::nullopt;
   }
 
   return std::make_optional(options);

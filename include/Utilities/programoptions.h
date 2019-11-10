@@ -23,6 +23,10 @@ const bool            INTERACTIVE_MODE = false;
 const double          EPSILON = 1.0;
 const bool            LOG_SCALING = false;
 const bool            SQRT_SCALING = false;
+const bool            LOG_LIN_SCALING = false;
+const bool            LOG_SQRT_SCALING = false;
+const uint32_t        MIXED_SCALING_INPUT_VARIABLE = 0;
+const double          MIXED_SCALING_THRESHOLD = 0.0;
 const bool            VALIDATE_AFTER_TRAINING = false;
 const double          VALIDATION_PERCENTAGE = 30.0;
 const FilePath        OUTPUT_VALUE = {};
@@ -48,8 +52,10 @@ const std::string CLI_HELP_TEXT = {
   "--outWeights <filepath>            : If set saves the weights of the network to the specified file after the training phase.\n" +
   "--interactive                      : If set activated the interactive mode after the training to test user input on the neural network.\n" +
   "--epsilon <double>                 : If set continues training after the last epoch until the improvement of the mean squarred error is less than the set epsilon. Default: " + std::to_string(EPSILON) + "\n" +
-  "--logScaling                       : If set scales the output values logarithmic for the neural network. Does not work together with --sqrtScaling.\n" +
-  "--sqrtScaling                      : If set scales the output values with the square root function for the neural network. Does not work together with --logScaling.\n" +
+  "--logScaling                       : If set scales the output values logarithmic for the neural network. Does not work together with other scaling options.\n" +
+  "--sqrtScaling                      : If set scales the output values with the square root function for the neural network. Does not work together with other scaling options.\n" +
+  "--logLinScaling X <double>         : If set scales the output logarithmic if input X [1, ..] is below or equal the given value and no scaling above it. Does not work together with other scaling options.\n" +
+  "--logSqrtScaling X <double>        : If set scales the output logarithmic if input X [1, ..] is below or equal the given value and sqrt scaling above it. Does not work together with other scaling options.\n" +
   "--validate                         : If set splits the data set in a training and validation set. After the training the network is tested with the validation set.\n" +
   "--validatePercentage <double>      : Sets the percentage of the data, which is only used for validation and not for training. Value should be between 0 and 100. Default: " + std::to_string(VALIDATION_PERCENTAGE) + "\n" +
   "--outValues <filepath>             : If set saves the output of the neural network for all input values to the specified file.\n" +
@@ -70,8 +76,8 @@ const std::string CLI_HELP_TEXT = {
 enum class CLIParameters
 {
   Help, InputFilePath, NumberOfInputVariables, NumberOfOutputVariables, NumberOfEpochs, ShowProgressDuringTraining, InputNetworkParameters,
-  OutputNetworkParameters, Interactive, Epsilon, LogScaling, SqrtScaling, Validate, ValidatePercentage, OutValues, OutDiff, PrintBehaviour,
-  Threads, InputMinMax, OutputMinMax, LearnRate, TimeoutMinutes, TimeoutHours, NumberOfDeteriorations, SaveProgress
+  OutputNetworkParameters, Interactive, Epsilon, LogScaling, SqrtScaling, LogLinScaling, LogSqrtScaling, Validate, ValidatePercentage, OutValues,
+  OutDiff, PrintBehaviour, Threads, InputMinMax, OutputMinMax, LearnRate, TimeoutMinutes, TimeoutHours, NumberOfDeteriorations, SaveProgress
 };
 
 const std::map<std::string, CLIParameters> CLIParameterMap {
@@ -92,6 +98,8 @@ const std::map<std::string, CLIParameters> CLIParameterMap {
   {"--epsilon",               CLIParameters::Epsilon},
   {"--logScaling",            CLIParameters::LogScaling},
   {"--sqrtScaling",           CLIParameters::SqrtScaling},
+  {"--logLinScaling",         CLIParameters::LogLinScaling},
+  {"--logSqrtScaling",        CLIParameters::LogSqrtScaling},
   {"--validate",              CLIParameters::Validate},
   {"--validatePercentage",    CLIParameters::ValidatePercentage},
   {"--outValues",             CLIParameters::OutValues},
@@ -122,6 +130,10 @@ public:
   double          Epsilon {                    DefaultValues::EPSILON };
   bool            LogScaling {                 DefaultValues::LOG_SCALING };
   bool            SqrtScaling {                DefaultValues::SQRT_SCALING };
+  bool            LogLinScaling {              DefaultValues::LOG_LIN_SCALING };
+  bool            LogSqrtScaling {             DefaultValues::LOG_SQRT_SCALING };
+  uint32_t        MixedScalingInputVariable {  DefaultValues::MIXED_SCALING_INPUT_VARIABLE };
+  double          MixedScalingThreshold {      DefaultValues::MIXED_SCALING_THRESHOLD };
   bool            ValidateAfterTraining {      DefaultValues::VALIDATE_AFTER_TRAINING };
   double          ValidationPercentage {       DefaultValues::VALIDATION_PERCENTAGE };
   FilePath        OutputValuesFilePath {       DefaultValues::OUTPUT_VALUE };
