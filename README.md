@@ -1,7 +1,7 @@
 # NNApproximator
 Project to test approximation of an unkown function with a neural network.
 
-To get the needed library files via git, you needed to activate Git LFS in your cloned repository.
+To get the needed library files via git, you need to activate Git LFS in your cloned repository.
 ```
 git lfs install
 ```
