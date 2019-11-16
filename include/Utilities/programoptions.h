@@ -5,6 +5,8 @@
 #include <map>
 #include <string>
 
+#include "Utilities/constants.h"
+
 namespace Utilities {
 
 using FilePath = std::string;
@@ -26,7 +28,7 @@ const bool            SQRT_SCALING = false;
 const bool            LOG_LIN_SCALING = false;
 const bool            LOG_SQRT_SCALING = false;
 const uint32_t        MIXED_SCALING_INPUT_VARIABLE = 0;
-const double          MIXED_SCALING_THRESHOLD = 0.0;
+const TensorDataType  MIXED_SCALING_THRESHOLD = 0.0;
 const bool            VALIDATE_AFTER_TRAINING = false;
 const double          VALIDATION_PERCENTAGE = 30.0;
 const FilePath        OUTPUT_VALUE = {};
@@ -133,7 +135,7 @@ public:
   bool            LogLinScaling {              DefaultValues::LOG_LIN_SCALING };
   bool            LogSqrtScaling {             DefaultValues::LOG_SQRT_SCALING };
   uint32_t        MixedScalingInputVariable {  DefaultValues::MIXED_SCALING_INPUT_VARIABLE };
-  double          MixedScalingThreshold {      DefaultValues::MIXED_SCALING_THRESHOLD };
+  TensorDataType  MixedScalingThreshold {      DefaultValues::MIXED_SCALING_THRESHOLD };
   bool            ValidateAfterTraining {      DefaultValues::VALIDATE_AFTER_TRAINING };
   double          ValidationPercentage {       DefaultValues::VALIDATION_PERCENTAGE };
   FilePath        OutputValuesFilePath {       DefaultValues::OUTPUT_VALUE };

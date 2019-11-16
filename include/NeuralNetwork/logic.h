@@ -37,6 +37,8 @@ private:
   Network network {nullptr};
   Utilities::ProgramOptions options {};
 
+  TensorDataType normalizedMixedScalingThreshold = Utilities::DefaultValues::MIXED_SCALING_THRESHOLD;
+
   std::pair<MinMaxVector, MinMaxVector> minMax = std::make_pair(MinMaxVector(), MinMaxVector());
   MinMaxVector& inputMinMax = minMax.first;
   MinMaxVector& outputMinMax = minMax.second;
