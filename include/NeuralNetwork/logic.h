@@ -13,7 +13,6 @@ public:
   bool performUserRequest(Utilities::ProgramOptions const& options);
 
 private:
-  void normalizeWithFileData(DataVector& data, DataVector const& minMax);
   void trainNetwork(DataVector const& data);
   void performInteractiveMode();
   [[nodiscard]]

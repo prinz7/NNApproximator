@@ -18,6 +18,9 @@ using MinMaxVector = std::vector<std::pair<TensorDataType, TensorDataType>>;
 using ProgressVector = std::vector<LearnProgressDataSet>;
 const std::string LEARN_PROGRESS_FILE_HEADER = "Epoch, R2Score, MeanSquaredError, ElapsedTimeInMS";
 
+using FilePath = std::string;
+using TimeoutDuration = std::chrono::milliseconds;
+
 // Data classes:
 
 class LearnProgressDataSet

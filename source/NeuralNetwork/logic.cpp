@@ -45,22 +45,16 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   }
 
   if (options.InputMinMaxFilePath != Utilities::DefaultValues::INPUT_MIN_MAX_FILE_PATH) {
-    std::string fileHeader{};
-    auto minMaxOpt = Utilities::FileParser::ParseInputFile(options.InputMinMaxFilePath, options.NumberOfInputVariables,
-      options.NumberOfOutputVariables, fileHeader);
-    if (!minMaxOpt) {
+    auto minMaxFromFile = Utilities::DataNormalizator::GetMinMaxFromFile(options.InputMinMaxFilePath,
+      options.NumberOfInputVariables, options.NumberOfOutputVariables);
+    if (!minMaxFromFile) {
       return false;
     }
-
-    if (minMaxOpt->size() != 2) {
-      std::cout << "Error: File with min/max values has the wrong number of data. Expected 2 values for each column, got: " + std::to_string(minMaxOpt->size()) << std::endl;
-      return false;
-    }
-
-    normalizeWithFileData(*dataOpt, *minMaxOpt);
+    minMax = *minMaxFromFile;
   } else {
-    Utilities::DataNormalizator::Normalize(*dataOpt, minMax, 0.0, 1.0);  // TODO let user control normalization
+    Utilities::DataNormalizator::CalculateMinMax(*dataOpt, minMax);
   }
+  Utilities::DataNormalizator::Normalize(*dataOpt, minMax, 0.0, 1.0);  // TODO let user control normalization
 
   // Calculate denormalized mixed scaling threshold value:
   if (options.LogLinScaling || options.LogSqrtScaling) {
@@ -140,26 +134,6 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   return true;
 }
 
-void Logic::normalizeWithFileData(DataVector& data, DataVector const& fileMinMax)
-{
-  inputMinMax = MinMaxVector(options.NumberOfInputVariables);
-  outputMinMax = MinMaxVector(options.NumberOfOutputVariables);
-
-  for (uint32_t j = 0; j < options.NumberOfInputVariables; ++j) {
-    inputMinMax[j].first = fileMinMax[0].first[j].item<TensorDataType>();
-    inputMinMax[j].second = fileMinMax[1].first[j].item<TensorDataType>();
-  }
-  for (uint32_t j = 0; j < options.NumberOfOutputVariables; ++j) {
-    outputMinMax[j].first = fileMinMax[0].second[j].item<TensorDataType>();
-    outputMinMax[j].second = fileMinMax[1].second[j].item<TensorDataType>();
-  }
-
-  for (auto& [inputTensor, outputTensor] : data) {
-    Utilities::DataNormalizator::Normalize(inputTensor, inputMinMax, 0.0, 1.0);
-    Utilities::DataNormalizator::Normalize(outputTensor, outputMinMax, 0.0, 1.0);
-  }
-}
-
 void Logic::trainNetwork(DataVector const& data)
 {
   if (data.empty()) {
@@ -185,7 +159,7 @@ void Logic::trainNetwork(DataVector const& data)
 
   for (uint32_t epoch = 1; epoch <= numberOfEpochs || continueTraining; ++epoch) {
 //    std::shuffle(randomlyShuffledData.begin(), randomlyShuffledData.end(), g);
-    auto elapsed = std::chrono::duration_cast<Utilities::TimeoutDuration>(std::chrono::steady_clock::now() - start);
+    auto elapsed = std::chrono::duration_cast<TimeoutDuration>(std::chrono::steady_clock::now() - start);
     auto remaining = ((elapsed / std::max(epoch - 1, 1u)) * (numberOfEpochs - epoch + 1));
     lastMeanError = currentMeanError;
     currentMeanError = calculateMeanError(data);

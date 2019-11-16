@@ -1,4 +1,5 @@
 #include "Utilities/datanormalizator.h"
+#include "Utilities/fileparser.h"
 
 namespace Utilities {
 
@@ -8,7 +9,7 @@ const TensorDataType MINIMUM_ALLOWED_VALUE = 0.000'000'000'01;
 
 }
 
-void DataNormalizator::Normalize(DataVector& data, std::pair<MinMaxVector, MinMaxVector>& minMaxVectors, TensorDataType const newMinValue, TensorDataType const newMaxValue)
+void DataNormalizator::CalculateMinMax(DataVector const& data, std::pair<MinMaxVector, MinMaxVector>& minMaxVectors)
 {
   if (data.empty()) return;
   auto& inputMinMax = minMaxVectors.first;
@@ -32,6 +33,47 @@ void DataNormalizator::Normalize(DataVector& data, std::pair<MinMaxVector, MinMa
       outputMinMax[i].second = std::max(outputMinMax[i].second, outputTensor[i].item<TensorDataType>());
     }
   }
+}
+
+std::optional<std::pair<MinMaxVector, MinMaxVector>> DataNormalizator::GetMinMaxFromFile(FilePath const& filePath, uint32_t numberOfInputVariables, uint32_t numberOfOutputVariables)
+{
+  std::string fileHeader{};
+  auto minMaxOpt = Utilities::FileParser::ParseInputFile(filePath, numberOfInputVariables, numberOfOutputVariables, fileHeader);
+  if (!minMaxOpt) {
+    return std::nullopt;
+  }
+
+  if (minMaxOpt->size() != 2) {
+    std::cout << "Error: File with min/max values has the wrong number of data. Expected 2 values for each column, got: " + std::to_string(minMaxOpt->size()) << std::endl;
+    return std::nullopt;
+  }
+
+  std::pair<MinMaxVector, MinMaxVector> minMaxValues{
+    MinMaxVector(numberOfInputVariables),
+    MinMaxVector(numberOfOutputVariables)
+  };
+
+  auto& inputMinMax = minMaxValues.first;
+  auto& outputMinMax = minMaxValues.second;
+  auto const& fileMinMax = *minMaxOpt;
+
+  for (uint32_t j = 0; j < numberOfInputVariables; ++j) {
+    inputMinMax[j].first = fileMinMax[0].first[j].item<TensorDataType>();
+    inputMinMax[j].second = fileMinMax[1].first[j].item<TensorDataType>();
+  }
+  for (uint32_t j = 0; j < numberOfOutputVariables; ++j) {
+    outputMinMax[j].first = fileMinMax[0].second[j].item<TensorDataType>();
+    outputMinMax[j].second = fileMinMax[1].second[j].item<TensorDataType>();
+  }
+
+  return std::make_optional(minMaxValues);
+}
+
+void DataNormalizator::Normalize(DataVector& data, std::pair<MinMaxVector const, MinMaxVector const> const& minMaxVectors, TensorDataType const newMinValue, TensorDataType const newMaxValue)
+{
+  if (data.empty()) return;
+  auto const& inputMinMax = minMaxVectors.first;
+  auto const& outputMinMax = minMaxVectors.second;
 
   for (auto& [inputTensor, outputTensor] : data) {
     Normalize(inputTensor, inputMinMax, newMinValue, newMaxValue);

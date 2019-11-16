@@ -9,9 +9,6 @@
 
 namespace Utilities {
 
-using FilePath = std::string;
-using TimeoutDuration = std::chrono::milliseconds;
-
 namespace DefaultValues {
 
 const FilePath        INPUT_DATA_FILE_PATH = {};
