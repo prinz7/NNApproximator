@@ -23,8 +23,6 @@ private:
   double calculateR2ScoreAlternate(DataVector const& testData);
   [[nodiscard]]
   double calculateR2ScoreAlternateDenormalized(DataVector const& testData);
-  [[nodiscard]]
-  std::pair<DataVector, DataVector> splitData(DataVector const& inputData, double trainingPercentage) const;
   void outputBehaviour(DataVector const& data);
   void saveValuesToFile(DataVector const& data, std::string const& outputPath);
   void saveDiffToFile(DataVector const& data, std::string const& outputPath);
@@ -36,15 +34,18 @@ private:
   Network network {nullptr};
   Utilities::ProgramOptions options {};
 
+  bool useMixedScaling = false;
   TensorDataType normalizedMixedScalingThreshold = Utilities::DefaultValues::MIXED_SCALING_THRESHOLD;
 
-  std::pair<MinMaxVector, MinMaxVector> minMax = std::make_pair(MinMaxVector(), MinMaxVector());
+  MinMaxValues minMax = std::make_pair(MinMaxVector(), MinMaxVector());
   MinMaxVector& inputMinMax = minMax.first;
   MinMaxVector& outputMinMax = minMax.second;
 
-  std::string inputFileHeader{};
+  MixedMinMaxValues mixedScalingMinMax {};
 
-  ProgressVector trainingProgress{};
+  std::string inputFileHeader {};
+
+  ProgressVector trainingProgress {};
 };
 
 }

@@ -1,4 +1,5 @@
 #include "Utilities/datanormalizator.h"
+#include "Utilities/datasplitter.h"
 #include "Utilities/fileparser.h"
 
 namespace Utilities {
@@ -9,7 +10,7 @@ const TensorDataType MINIMUM_ALLOWED_VALUE = 0.000'000'000'01;
 
 }
 
-void DataNormalizator::CalculateMinMax(DataVector const& data, std::pair<MinMaxVector, MinMaxVector>& minMaxVectors)
+void DataNormalizator::CalculateMinMax(DataVector const& data, MinMaxValues& minMaxVectors)
 {
   if (data.empty()) return;
   auto& inputMinMax = minMaxVectors.first;
@@ -35,7 +36,24 @@ void DataNormalizator::CalculateMinMax(DataVector const& data, std::pair<MinMaxV
   }
 }
 
-std::optional<std::pair<MinMaxVector, MinMaxVector>> DataNormalizator::GetMinMaxFromFile(FilePath const& filePath, uint32_t numberOfInputVariables, uint32_t numberOfOutputVariables)
+void DataNormalizator::CalculateMixedMinMax(DataVector const& data, uint32_t thresholdVariable, TensorDataType threshold, MixedMinMaxValues& mixedMinMaxValues)
+{
+  mixedMinMaxValues = std::make_pair(MinMaxValues(), MinMaxValues());
+
+  auto splitData = DataSplitter::splitDataWithThreshold(data, thresholdVariable, threshold);
+
+  CalculateMinMax(splitData.first, mixedMinMaxValues.first);
+  CalculateMinMax(splitData.second, mixedMinMaxValues.second);
+
+  // Only split min/max values for the output tensor:
+  MinMaxValues globalMinMax{};
+
+  CalculateMinMax(data, globalMinMax);
+  mixedMinMaxValues.first.first = globalMinMax.first;
+  mixedMinMaxValues.second.first = globalMinMax.first;
+}
+
+std::optional<MinMaxValues> DataNormalizator::GetMinMaxFromFile(FilePath const& filePath, uint32_t numberOfInputVariables, uint32_t numberOfOutputVariables)
 {
   std::string fileHeader{};
   auto minMaxOpt = Utilities::FileParser::ParseInputFile(filePath, numberOfInputVariables, numberOfOutputVariables, fileHeader);
@@ -67,6 +85,50 @@ std::optional<std::pair<MinMaxVector, MinMaxVector>> DataNormalizator::GetMinMax
   }
 
   return std::make_optional(minMaxValues);
+}
+
+std::optional<MixedMinMaxValues> DataNormalizator::GetMixedMinMaxFromFile(FilePath const& filePath, uint32_t numberOfInputVariables, uint32_t numberOfOutputVariables)
+{
+  std::string fileHeader{};
+  auto minMaxOpt = Utilities::FileParser::ParseInputFile(filePath, numberOfInputVariables, numberOfOutputVariables, fileHeader);
+  if (!minMaxOpt) {
+    return std::nullopt;
+  }
+
+  if (minMaxOpt->size() != 4) {
+    std::cout << "Error: File with [mixed scaling] min/max values has the wrong number of data. Expected 4 values for each column, got: " + std::to_string(minMaxOpt->size()) << std::endl;
+    return std::nullopt;
+  }
+
+  std::pair<MinMaxVector, MinMaxVector> minMaxValues1{
+    MinMaxVector(numberOfInputVariables),
+    MinMaxVector(numberOfOutputVariables)
+  };
+  std::pair<MinMaxVector, MinMaxVector> minMaxValues2{
+    MinMaxVector(numberOfInputVariables),
+    MinMaxVector(numberOfOutputVariables)
+  };
+
+  auto& inputMinMax1 = minMaxValues1.first;
+  auto& outputMinMax1 = minMaxValues1.second;
+  auto& inputMinMax2 = minMaxValues2.first;
+  auto& outputMinMax2 = minMaxValues2.second;
+  auto const& fileMinMax = *minMaxOpt;
+
+  for (uint32_t j = 0; j < numberOfInputVariables; ++j) {
+    inputMinMax1[j].first = fileMinMax[0].first[j].item<TensorDataType>();
+    inputMinMax1[j].second = fileMinMax[1].first[j].item<TensorDataType>();
+    inputMinMax2[j].first = fileMinMax[2].first[j].item<TensorDataType>();
+    inputMinMax2[j].second = fileMinMax[3].first[j].item<TensorDataType>();
+  }
+  for (uint32_t j = 0; j < numberOfOutputVariables; ++j) {
+    outputMinMax1[j].first = fileMinMax[0].second[j].item<TensorDataType>();
+    outputMinMax1[j].second = fileMinMax[1].second[j].item<TensorDataType>();
+    outputMinMax2[j].first = fileMinMax[2].second[j].item<TensorDataType>();
+    outputMinMax2[j].second = fileMinMax[3].second[j].item<TensorDataType>();
+  }
+
+  return std::make_optional(std::make_pair(minMaxValues1, minMaxValues2));
 }
 
 void DataNormalizator::Normalize(DataVector& data, std::pair<MinMaxVector const, MinMaxVector const> const& minMaxVectors, TensorDataType const newMinValue, TensorDataType const newMaxValue)

@@ -14,6 +14,8 @@ const torch::ScalarType TORCH_DATA_TYPE = torch::kDouble;
 
 using DataVector = std::vector<std::pair<torch::Tensor, torch::Tensor>>;
 using MinMaxVector = std::vector<std::pair<TensorDataType, TensorDataType>>;
+using MinMaxValues = std::pair<MinMaxVector, MinMaxVector>;
+using MixedMinMaxValues = std::pair<MinMaxValues, MinMaxValues>;
 
 using ProgressVector = std::vector<LearnProgressDataSet>;
 const std::string LEARN_PROGRESS_FILE_HEADER = "Epoch, R2Score, MeanSquaredError, ElapsedTimeInMS";
