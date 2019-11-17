@@ -133,7 +133,6 @@ std::optional<MixedMinMaxValues> DataNormalizator::GetMixedMinMaxFromFile(FilePa
 
 void DataNormalizator::Normalize(DataVector& data, std::pair<MinMaxVector const, MinMaxVector const> const& minMaxVectors, TensorDataType const newMinValue, TensorDataType const newMaxValue)
 {
-  if (data.empty()) return;
   auto const& inputMinMax = minMaxVectors.first;
   auto const& outputMinMax = minMaxVectors.second;
 

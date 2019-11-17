@@ -72,14 +72,25 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   }
 
   // Normalize
-  Utilities::DataNormalizator::Normalize(*dataOpt, minMax, 0.0, 1.0);  // TODO let user control normalization
+  if (useMixedScaling) {
+    for (auto& [inputTensor, outputTensor] : *dataOpt) {
+      Utilities::DataNormalizator::Normalize(inputTensor, mixedScalingMinMax.first.first, 0.0, 1.0);
+      if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= options.MixedScalingThreshold) {
+        Utilities::DataNormalizator::Normalize(outputTensor, mixedScalingMinMax.first.second, -1.0, 0.0); // TODO check if overlap is a problem
+      } else {
+        Utilities::DataNormalizator::Normalize(outputTensor, mixedScalingMinMax.second.second, 0.0, 1.0);
+      }
+    }
+  } else {
+    Utilities::DataNormalizator::Normalize(*dataOpt, minMax, 0.0, 1.0);  // TODO let user control normalization
+  }
 
   // Calculate denormalized mixed scaling threshold value:
   if (useMixedScaling) {
     auto tempInputTensor = dataOpt->front().first.clone();
     tempInputTensor[options.MixedScalingInputVariable] = options.MixedScalingThreshold;
 
-    Utilities::DataNormalizator::Normalize(tempInputTensor, inputMinMax, 0.0, 1.0);
+    Utilities::DataNormalizator::Normalize(tempInputTensor, mixedScalingMinMax.first.first, 0.0, 1.0);
     normalizedMixedScalingThreshold = tempInputTensor[options.MixedScalingInputVariable].item<TensorDataType>();
   }
 
@@ -259,10 +270,10 @@ void Logic::performInteractiveMode()
     }
 
     if (currentVariable >= options.NumberOfInputVariables) {
-      Utilities::DataNormalizator::Normalize(inTensor, inputMinMax, 0.0, 1.0);
+      Utilities::DataNormalizator::Normalize(inTensor, (useMixedScaling) ? mixedScalingMinMax.first.first : inputMinMax, 0.0, 1.0);
       auto output = network->forward(inTensor);
       auto dOutputTensor = output.clone();
-      Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, true);
+      denormalizeOutputTensor(inTensor, dOutputTensor, false);
 
       if (options.LogScaling) {
         Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
@@ -388,7 +399,7 @@ double Logic::calculateR2ScoreAlternateDenormalized(DataVector const& testData)
   TensorDataType y_cross = 0.0;
   for (auto const& [x, y] : testData) {
     auto yD = y.clone();
-    Utilities::DataNormalizator::Denormalize(yD, outputMinMax, 0.0 , 1.0, false);
+    denormalizeOutputTensor(x, yD, false);
 
     if (options.LogScaling) {
       Utilities::DataNormalizator::UnscaleLogarithmic(yD);
@@ -416,8 +427,8 @@ double Logic::calculateR2ScoreAlternateDenormalized(DataVector const& testData)
   for (auto const& [x, y] : testData) {
     auto prediction = network->forward(x);
     auto yD = y.clone();
-    Utilities::DataNormalizator::Denormalize(yD, outputMinMax, 0.0 , 1.0, false);
-    Utilities::DataNormalizator::Denormalize(prediction, outputMinMax, 0.0 , 1.0, false);
+    denormalizeOutputTensor(x, yD, false);
+    denormalizeOutputTensor(x, prediction, false);
 
     if (options.LogScaling) {
       Utilities::DataNormalizator::UnscaleLogarithmic(yD);
@@ -462,9 +473,9 @@ void Logic::outputBehaviour(DataVector const& data)
     torch::Tensor dOutputTensor = outputTensor.clone();
     torch::Tensor dPrediction = prediction.clone();
 
-    Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, true);
-    Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, true);
-    Utilities::DataNormalizator::Denormalize(dPrediction, outputMinMax, 0.0 , 1.0, true);
+    denormalizeInputTensor(dInputTensor, false);
+    denormalizeOutputTensor(inputTensor, dOutputTensor, false);
+    denormalizeOutputTensor(inputTensor, dPrediction, false);
 
     if (options.LogScaling) {
       Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
@@ -510,8 +521,8 @@ void Logic::saveValuesToFile(DataVector const& data, std::string const& path)
     auto prediction = network->forward(inputTensor);
     torch::Tensor dInputTensor = inputTensor.clone();
 
-    Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, false);
-    Utilities::DataNormalizator::Denormalize(prediction, outputMinMax, 0.0 , 1.0, false);
+    denormalizeInputTensor(dInputTensor, false);
+    denormalizeOutputTensor(inputTensor, prediction, false);
 
     if (options.LogScaling) {
       Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
@@ -548,9 +559,9 @@ void Logic::saveDiffToFile(DataVector const& data, std::string const& path)
     torch::Tensor dInputTensor = inputTensor.clone();
     torch::Tensor dOutputTensor = outputTensor.clone();
 
-    Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, false);
-    Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, false);
-    Utilities::DataNormalizator::Denormalize(prediction, outputMinMax, 0.0 , 1.0, false);
+    denormalizeInputTensor(dInputTensor, false);
+    denormalizeOutputTensor(inputTensor, dOutputTensor, false);
+    denormalizeOutputTensor(inputTensor, prediction, false);
 
     if (options.LogScaling) {
       Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
@@ -631,6 +642,24 @@ void Logic::saveMinMaxToFile() const
   }
 
   Utilities::FileParser::SaveData(data, options.OutputMinMaxFilePath, inputFileHeader);
+}
+
+inline void Logic::denormalizeInputTensor(torch::Tensor& tensor, bool limitValues)
+{
+  Utilities::DataNormalizator::Denormalize(tensor, (useMixedScaling) ? mixedScalingMinMax.first.first : inputMinMax, 0.0, 1.0, limitValues);
+}
+
+inline void Logic::denormalizeOutputTensor(torch::Tensor const& inputTensor, torch::Tensor& outputTensor, bool limitValues)
+{
+  if (useMixedScaling) {
+    if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
+      Utilities::DataNormalizator::Denormalize(outputTensor, mixedScalingMinMax.first.second, -1.0, 0.0, limitValues);
+    } else {
+      Utilities::DataNormalizator::Denormalize(outputTensor, mixedScalingMinMax.second.second, 0.0, 1.0, limitValues);
+    }
+  } else {
+    Utilities::DataNormalizator::Denormalize(outputTensor, outputMinMax, 0.0, 1.0, limitValues);
+  }
 }
 
 }

@@ -29,6 +29,8 @@ private:
   [[nodiscard]]
   torch::Tensor calculateDiff(torch::Tensor const& input1, torch::Tensor const& input2) const;
   void saveMinMaxToFile() const;
+  void denormalizeInputTensor(torch::Tensor& tensor, bool limitValues = false);
+  void denormalizeOutputTensor(torch::Tensor const& inputTensor, torch::Tensor& outputTensor, bool limitValues = false);
 
 private:
   Network network {nullptr};
