@@ -228,6 +228,11 @@ void Logic::trainNetwork(DataVector const& data)
       break;
     }
 
+    if (std::isnan(currentMeanError)) {
+      std::cout << "\nStop execution (error is NaN)." << std::endl;
+      break;
+    }
+
     for (auto const& [x, y] : randomlyShuffledData) {
       auto prediction = network->forward(x);
 
