@@ -74,12 +74,12 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   // Normalize
   if (useMixedScaling) {
     for (auto& [inputTensor, outputTensor] : *dataOpt) {
-      Utilities::DataNormalizator::Normalize(inputTensor, mixedScalingMinMax.first.first, 0.0, 1.0);
       if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= options.MixedScalingThreshold) {
         Utilities::DataNormalizator::Normalize(outputTensor, mixedScalingMinMax.first.second, -1.0, 0.0); // TODO check if overlap is a problem
       } else {
         Utilities::DataNormalizator::Normalize(outputTensor, mixedScalingMinMax.second.second, 0.0, 1.0);
       }
+      Utilities::DataNormalizator::Normalize(inputTensor, mixedScalingMinMax.first.first, 0.0, 1.0);
     }
   } else {
     Utilities::DataNormalizator::Normalize(*dataOpt, minMax, 0.0, 1.0);  // TODO let user control normalization
