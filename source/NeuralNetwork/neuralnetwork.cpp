@@ -30,7 +30,7 @@ torch::Tensor NetworkImpl::forward(torch::Tensor x)
 void NetworkImpl::addLayer(const size_t layerNumber, const uint32_t numberOfInputNodes, const uint32_t numberOfOutputNodes)
 {
   layers.emplace_back(register_module("layer" + std::to_string(layerNumber),
-    torch::nn::Sequential(torch::nn::Linear(numberOfInputNodes, numberOfOutputNodes))));
+    torch::nn::Sequential(torch::nn::Linear(numberOfInputNodes, numberOfOutputNodes), torch::nn::Functional(torch::leaky_relu, 0.2))));
   layers[layerNumber]->to(TORCH_DATA_TYPE);
 }
 
