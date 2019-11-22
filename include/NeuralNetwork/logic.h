@@ -13,7 +13,6 @@ public:
   bool performUserRequest(Utilities::ProgramOptions const& options);
 
 private:
-  void normalizeWithFileData(DataVector& data, DataVector const& minMax);
   void trainNetwork(DataVector const& data);
   void performInteractiveMode();
   [[nodiscard]]
@@ -24,28 +23,31 @@ private:
   double calculateR2ScoreAlternate(DataVector const& testData);
   [[nodiscard]]
   double calculateR2ScoreAlternateDenormalized(DataVector const& testData);
-  [[nodiscard]]
-  std::pair<DataVector, DataVector> splitData(DataVector const& inputData, double trainingPercentage) const;
   void outputBehaviour(DataVector const& data);
   void saveValuesToFile(DataVector const& data, std::string const& outputPath);
   void saveDiffToFile(DataVector const& data, std::string const& outputPath);
   [[nodiscard]]
   torch::Tensor calculateDiff(torch::Tensor const& input1, torch::Tensor const& input2) const;
   void saveMinMaxToFile() const;
+  void denormalizeInputTensor(torch::Tensor& tensor, bool limitValues = false);
+  void denormalizeOutputTensor(torch::Tensor const& inputTensor, torch::Tensor& outputTensor, bool limitValues = false);
 
 private:
   Network network {nullptr};
   Utilities::ProgramOptions options {};
 
+  bool useMixedScaling = false;
   TensorDataType normalizedMixedScalingThreshold = Utilities::DefaultValues::MIXED_SCALING_THRESHOLD;
 
-  std::pair<MinMaxVector, MinMaxVector> minMax = std::make_pair(MinMaxVector(), MinMaxVector());
+  MinMaxValues minMax = std::make_pair(MinMaxVector(), MinMaxVector());
   MinMaxVector& inputMinMax = minMax.first;
   MinMaxVector& outputMinMax = minMax.second;
 
-  std::string inputFileHeader{};
+  MixedMinMaxValues mixedScalingMinMax {};
 
-  ProgressVector trainingProgress{};
+  std::string inputFileHeader {};
+
+  ProgressVector trainingProgress {};
 };
 
 }

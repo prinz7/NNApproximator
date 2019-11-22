@@ -1,5 +1,6 @@
 #include "NeuralNetwork/logic.h"
 #include "Utilities/datanormalizator.h"
+#include "Utilities/datasplitter.h"
 #include "Utilities/fileparser.h"
 
 #include <chrono>
@@ -16,6 +17,7 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     return false;
   }
 
+  useMixedScaling = options.LogLinScaling || options.LogSqrtScaling;
   torch::set_num_threads(options.NumberOfThreads);
 
   if (options.LogScaling) {
@@ -44,30 +46,51 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     }
   }
 
+  // Get min/max values
   if (options.InputMinMaxFilePath != Utilities::DefaultValues::INPUT_MIN_MAX_FILE_PATH) {
-    std::string fileHeader{};
-    auto minMaxOpt = Utilities::FileParser::ParseInputFile(options.InputMinMaxFilePath, options.NumberOfInputVariables,
-      options.NumberOfOutputVariables, fileHeader);
-    if (!minMaxOpt) {
-      return false;
+    if (useMixedScaling) {
+      auto minMaxFromFile = Utilities::DataNormalizator::GetMixedMinMaxFromFile(options.InputMinMaxFilePath,
+        options.NumberOfInputVariables, options.NumberOfOutputVariables);
+      if (!minMaxFromFile) {
+        return false;
+      }
+      mixedScalingMinMax = *minMaxFromFile;
+    } else {
+      auto minMaxFromFile = Utilities::DataNormalizator::GetMinMaxFromFile(options.InputMinMaxFilePath,
+        options.NumberOfInputVariables, options.NumberOfOutputVariables);
+      if (!minMaxFromFile) {
+        return false;
+      }
+      minMax = *minMaxFromFile;
     }
-
-    if (minMaxOpt->size() != 2) {
-      std::cout << "Error: File with min/max values has the wrong number of data. Expected 2 values for each column, got: " + std::to_string(minMaxOpt->size()) << std::endl;
-      return false;
+  } else {
+    if (useMixedScaling) {
+      Utilities::DataNormalizator::CalculateMixedMinMax(*dataOpt, options.MixedScalingInputVariable, options.MixedScalingThreshold, mixedScalingMinMax);
+    } else {
+      Utilities::DataNormalizator::CalculateMinMax(*dataOpt, minMax);
     }
+  }
 
-    normalizeWithFileData(*dataOpt, *minMaxOpt);
+  // Normalize
+  if (useMixedScaling) {
+    for (auto& [inputTensor, outputTensor] : *dataOpt) {
+      if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= options.MixedScalingThreshold) {
+        Utilities::DataNormalizator::Normalize(outputTensor, mixedScalingMinMax.first.second, -1.0, 0.0); // TODO check if overlap is a problem
+      } else {
+        Utilities::DataNormalizator::Normalize(outputTensor, mixedScalingMinMax.second.second, 0.0, 1.0);
+      }
+      Utilities::DataNormalizator::Normalize(inputTensor, mixedScalingMinMax.first.first, 0.0, 1.0);
+    }
   } else {
     Utilities::DataNormalizator::Normalize(*dataOpt, minMax, 0.0, 1.0);  // TODO let user control normalization
   }
 
   // Calculate denormalized mixed scaling threshold value:
-  if (options.LogLinScaling || options.LogSqrtScaling) {
+  if (useMixedScaling) {
     auto tempInputTensor = dataOpt->front().first.clone();
     tempInputTensor[options.MixedScalingInputVariable] = options.MixedScalingThreshold;
 
-    Utilities::DataNormalizator::Normalize(tempInputTensor, inputMinMax, 0.0, 1.0);
+    Utilities::DataNormalizator::Normalize(tempInputTensor, mixedScalingMinMax.first.first, 0.0, 1.0);
     normalizedMixedScalingThreshold = tempInputTensor[options.MixedScalingInputVariable].item<TensorDataType>();
   }
 
@@ -84,7 +107,7 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   std::pair<DataVector, DataVector> data;
 
   if (options.ValidateAfterTraining) {
-    data = splitData(*dataOpt, 100.0 - options.ValidationPercentage);
+    data = Utilities::DataSplitter::splitDataRandomly(*dataOpt, 100.0 - options.ValidationPercentage);
   } else {
     data = std::make_pair(*dataOpt, DataVector());
   }
@@ -140,26 +163,6 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   return true;
 }
 
-void Logic::normalizeWithFileData(DataVector& data, DataVector const& fileMinMax)
-{
-  inputMinMax = MinMaxVector(options.NumberOfInputVariables);
-  outputMinMax = MinMaxVector(options.NumberOfOutputVariables);
-
-  for (uint32_t j = 0; j < options.NumberOfInputVariables; ++j) {
-    inputMinMax[j].first = fileMinMax[0].first[j].item<TensorDataType>();
-    inputMinMax[j].second = fileMinMax[1].first[j].item<TensorDataType>();
-  }
-  for (uint32_t j = 0; j < options.NumberOfOutputVariables; ++j) {
-    outputMinMax[j].first = fileMinMax[0].second[j].item<TensorDataType>();
-    outputMinMax[j].second = fileMinMax[1].second[j].item<TensorDataType>();
-  }
-
-  for (auto& [inputTensor, outputTensor] : data) {
-    Utilities::DataNormalizator::Normalize(inputTensor, inputMinMax, 0.0, 1.0);
-    Utilities::DataNormalizator::Normalize(outputTensor, outputMinMax, 0.0, 1.0);
-  }
-}
-
 void Logic::trainNetwork(DataVector const& data)
 {
   if (data.empty()) {
@@ -185,7 +188,7 @@ void Logic::trainNetwork(DataVector const& data)
 
   for (uint32_t epoch = 1; epoch <= numberOfEpochs || continueTraining; ++epoch) {
 //    std::shuffle(randomlyShuffledData.begin(), randomlyShuffledData.end(), g);
-    auto elapsed = std::chrono::duration_cast<Utilities::TimeoutDuration>(std::chrono::steady_clock::now() - start);
+    auto elapsed = std::chrono::duration_cast<TimeoutDuration>(std::chrono::steady_clock::now() - start);
     auto remaining = ((elapsed / std::max(epoch - 1, 1u)) * (numberOfEpochs - epoch + 1));
     lastMeanError = currentMeanError;
     currentMeanError = calculateMeanError(data);
@@ -225,11 +228,14 @@ void Logic::trainNetwork(DataVector const& data)
       break;
     }
 
+    if (std::isnan(currentMeanError)) {
+      std::cout << "\nStop execution (error is NaN)." << std::endl;
+      break;
+    }
+
     for (auto const& [x, y] : randomlyShuffledData) {
       auto prediction = network->forward(x);
 
-//      prediction = prediction.toType(torch::ScalarType::Long);
-//      auto target = y.toType(torch::ScalarType::Long);
       auto loss = torch::mse_loss(prediction, y);
 //      auto loss = torch::kl_div(prediction, y);
 //      auto loss = torch::nll_loss(prediction, y);
@@ -269,10 +275,10 @@ void Logic::performInteractiveMode()
     }
 
     if (currentVariable >= options.NumberOfInputVariables) {
-      Utilities::DataNormalizator::Normalize(inTensor, inputMinMax, 0.0, 1.0);
+      Utilities::DataNormalizator::Normalize(inTensor, (useMixedScaling) ? mixedScalingMinMax.first.first : inputMinMax, 0.0, 1.0);
       auto output = network->forward(inTensor);
       auto dOutputTensor = output.clone();
-      Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, true);
+      denormalizeOutputTensor(inTensor, dOutputTensor, false);
 
       if (options.LogScaling) {
         Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
@@ -398,7 +404,7 @@ double Logic::calculateR2ScoreAlternateDenormalized(DataVector const& testData)
   TensorDataType y_cross = 0.0;
   for (auto const& [x, y] : testData) {
     auto yD = y.clone();
-    Utilities::DataNormalizator::Denormalize(yD, outputMinMax, 0.0 , 1.0, false);
+    denormalizeOutputTensor(x, yD, false);
 
     if (options.LogScaling) {
       Utilities::DataNormalizator::UnscaleLogarithmic(yD);
@@ -426,8 +432,8 @@ double Logic::calculateR2ScoreAlternateDenormalized(DataVector const& testData)
   for (auto const& [x, y] : testData) {
     auto prediction = network->forward(x);
     auto yD = y.clone();
-    Utilities::DataNormalizator::Denormalize(yD, outputMinMax, 0.0 , 1.0, false);
-    Utilities::DataNormalizator::Denormalize(prediction, outputMinMax, 0.0 , 1.0, false);
+    denormalizeOutputTensor(x, yD, false);
+    denormalizeOutputTensor(x, prediction, false);
 
     if (options.LogScaling) {
       Utilities::DataNormalizator::UnscaleLogarithmic(yD);
@@ -462,29 +468,6 @@ double Logic::calculateR2ScoreAlternateDenormalized(DataVector const& testData)
   return 1.0 - (SQR / SQT);
 }
 
-std::pair<DataVector, DataVector> Logic::splitData(DataVector const& inputData, double const trainingPercentage) const
-{
-  if (trainingPercentage == 0) {
-    return std::make_pair(DataVector(), inputData);
-  }
-  DataVector trainingData{};
-  DataVector validationData{};
-
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_real_distribution<double> dis(0.0, 100.0);
-
-  for (auto const& entry : inputData) {
-    if (dis(gen) <= trainingPercentage) {
-      trainingData.push_back(entry);
-    } else {
-      validationData.push_back(entry);
-    }
-  }
-
-  return std::make_pair(trainingData, validationData);
-}
-
 void Logic::outputBehaviour(DataVector const& data)
 {
   for (auto const& [inputTensor, outputTensor] : data) {
@@ -495,9 +478,9 @@ void Logic::outputBehaviour(DataVector const& data)
     torch::Tensor dOutputTensor = outputTensor.clone();
     torch::Tensor dPrediction = prediction.clone();
 
-    Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, true);
-    Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, true);
-    Utilities::DataNormalizator::Denormalize(dPrediction, outputMinMax, 0.0 , 1.0, true);
+    denormalizeInputTensor(dInputTensor, false);
+    denormalizeOutputTensor(inputTensor, dOutputTensor, false);
+    denormalizeOutputTensor(inputTensor, dPrediction, false);
 
     if (options.LogScaling) {
       Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
@@ -543,8 +526,8 @@ void Logic::saveValuesToFile(DataVector const& data, std::string const& path)
     auto prediction = network->forward(inputTensor);
     torch::Tensor dInputTensor = inputTensor.clone();
 
-    Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, false);
-    Utilities::DataNormalizator::Denormalize(prediction, outputMinMax, 0.0 , 1.0, false);
+    denormalizeInputTensor(dInputTensor, false);
+    denormalizeOutputTensor(inputTensor, prediction, false);
 
     if (options.LogScaling) {
       Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
@@ -581,9 +564,9 @@ void Logic::saveDiffToFile(DataVector const& data, std::string const& path)
     torch::Tensor dInputTensor = inputTensor.clone();
     torch::Tensor dOutputTensor = outputTensor.clone();
 
-    Utilities::DataNormalizator::Denormalize(dInputTensor, inputMinMax,0.0, 1.0, false);
-    Utilities::DataNormalizator::Denormalize(dOutputTensor, outputMinMax, 0.0, 1.0, false);
-    Utilities::DataNormalizator::Denormalize(prediction, outputMinMax, 0.0 , 1.0, false);
+    denormalizeInputTensor(dInputTensor, false);
+    denormalizeOutputTensor(inputTensor, dOutputTensor, false);
+    denormalizeOutputTensor(inputTensor, prediction, false);
 
     if (options.LogScaling) {
       Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
@@ -630,21 +613,58 @@ void Logic::saveMinMaxToFile() const
 {
   auto inTensorDefault = torch::zeros(options.NumberOfInputVariables, TORCH_DATA_TYPE);
   auto outTensorDefault = torch::zeros(options.NumberOfOutputVariables, TORCH_DATA_TYPE);
-  DataVector data(2);
+
+  DataVector data = (useMixedScaling) ? DataVector(4) : DataVector(2);
   data[0] = std::make_pair(inTensorDefault, outTensorDefault);
   data[1] = std::make_pair(inTensorDefault.clone(), outTensorDefault.clone());
+  if (useMixedScaling) {
+    data[2] = std::make_pair(inTensorDefault.clone(), outTensorDefault.clone());
+    data[3] = std::make_pair(inTensorDefault.clone(), outTensorDefault.clone());
+  }
 
   for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) {
-    data[0].first[i] = inputMinMax[i].first;
-    data[1].first[i] = inputMinMax[i].second;
+    if (useMixedScaling) {
+      data[0].first[i] = mixedScalingMinMax.first.first[i].first;
+      data[1].first[i] = mixedScalingMinMax.first.first[i].second;
+      data[2].first[i] = mixedScalingMinMax.second.first[i].first;
+      data[3].first[i] = mixedScalingMinMax.second.first[i].second;
+    } else {
+      data[0].first[i] = inputMinMax[i].first;
+      data[1].first[i] = inputMinMax[i].second;
+    }
   }
 
   for (uint32_t i = 0; i < options.NumberOfOutputVariables; ++i) {
-    data[0].second[i] = outputMinMax[i].first;
-    data[1].second[i] = outputMinMax[i].second;
+    if (useMixedScaling) {
+      data[0].second[i] = mixedScalingMinMax.first.second[i].first;
+      data[1].second[i] = mixedScalingMinMax.first.second[i].second;
+      data[2].second[i] = mixedScalingMinMax.second.second[i].first;
+      data[3].second[i] = mixedScalingMinMax.second.second[i].second;
+    } else {
+      data[0].second[i] = outputMinMax[i].first;
+      data[1].second[i] = outputMinMax[i].second;
+    }
   }
 
   Utilities::FileParser::SaveData(data, options.OutputMinMaxFilePath, inputFileHeader);
+}
+
+inline void Logic::denormalizeInputTensor(torch::Tensor& tensor, bool limitValues)
+{
+  Utilities::DataNormalizator::Denormalize(tensor, (useMixedScaling) ? mixedScalingMinMax.first.first : inputMinMax, 0.0, 1.0, limitValues);
+}
+
+inline void Logic::denormalizeOutputTensor(torch::Tensor const& inputTensor, torch::Tensor& outputTensor, bool limitValues)
+{
+  if (useMixedScaling) {
+    if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
+      Utilities::DataNormalizator::Denormalize(outputTensor, mixedScalingMinMax.first.second, -1.0, 0.0, limitValues);
+    } else {
+      Utilities::DataNormalizator::Denormalize(outputTensor, mixedScalingMinMax.second.second, 0.0, 1.0, limitValues);
+    }
+  } else {
+    Utilities::DataNormalizator::Denormalize(outputTensor, outputMinMax, 0.0, 1.0, limitValues);
+  }
 }
 
 }
