@@ -20,6 +20,10 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   useMixedScaling = options.LogLinScaling || options.LogSqrtScaling;
   torch::set_num_threads(options.NumberOfThreads);
 
+  if (options.RNGSeed) {
+    torch::manual_seed(*options.RNGSeed);
+  }
+
   if (options.LogScaling) {
     for (auto& [inputTensor, outputTensor] : *dataOpt) {
       (void) inputTensor;

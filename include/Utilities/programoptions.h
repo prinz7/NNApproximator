@@ -11,33 +11,34 @@ namespace Utilities {
 
 namespace DefaultValues {
 
-const FilePath        INPUT_DATA_FILE_PATH = {};
-const FilePath        INPUT_NETWORK_PARAMETERS = {};
-const FilePath        OUTPUT_NETWORK_PARAMETERS = {};
-const uint32_t        NUMBER_OF_INPUT_VARIABLES = 1;
-const uint32_t        NUMBER_OF_OUTPUT_VARIABLES = 1;
-const uint32_t        NUMBER_OF_EPOCHS = 10;
-const bool            SHOW_PROGRESS_DURING_TRAINING = true;
-const bool            INTERACTIVE_MODE = false;
-const double          EPSILON = 1.0;
-const bool            LOG_SCALING = false;
-const bool            SQRT_SCALING = false;
-const bool            LOG_LIN_SCALING = false;
-const bool            LOG_SQRT_SCALING = false;
-const uint32_t        MIXED_SCALING_INPUT_VARIABLE = 0;
-const TensorDataType  MIXED_SCALING_THRESHOLD = 0.0;
-const bool            VALIDATE_AFTER_TRAINING = false;
-const double          VALIDATION_PERCENTAGE = 30.0;
-const FilePath        OUTPUT_VALUE = {};
-const FilePath        OUTPUT_DIFF = {};
-const bool            PRINT_BEHAVIOUR = false;
-const int32_t         NUMBER_OF_THREADS = torch::get_num_threads();
-const FilePath        INPUT_MIN_MAX_FILE_PATH = {};
-const FilePath        OUTPUT_MIN_MAX_FILE_PATH = {};
-const double          LEARN_RATE = 0.001;
-const TimeoutDuration MAX_EXECUTION_TIME = std::chrono::duration_cast<TimeoutDuration>(std::chrono::hours(24 * 7)); // TODO change to std::chrono::weeks when switching to C++20
-const uint32_t        NUMBER_OF_DETERIORATIONS = 0;
-const FilePath        PROGRESS_FILE_PATH = {};
+const FilePath                INPUT_DATA_FILE_PATH = {};
+const FilePath                INPUT_NETWORK_PARAMETERS = {};
+const FilePath                OUTPUT_NETWORK_PARAMETERS = {};
+const uint32_t                NUMBER_OF_INPUT_VARIABLES = 1;
+const uint32_t                NUMBER_OF_OUTPUT_VARIABLES = 1;
+const uint32_t                NUMBER_OF_EPOCHS = 10;
+const bool                    SHOW_PROGRESS_DURING_TRAINING = true;
+const bool                    INTERACTIVE_MODE = false;
+const double                  EPSILON = 1.0;
+const bool                    LOG_SCALING = false;
+const bool                    SQRT_SCALING = false;
+const bool                    LOG_LIN_SCALING = false;
+const bool                    LOG_SQRT_SCALING = false;
+const uint32_t                MIXED_SCALING_INPUT_VARIABLE = 0;
+const TensorDataType          MIXED_SCALING_THRESHOLD = 0.0;
+const bool                    VALIDATE_AFTER_TRAINING = false;
+const double                  VALIDATION_PERCENTAGE = 30.0;
+const FilePath                OUTPUT_VALUE = {};
+const FilePath                OUTPUT_DIFF = {};
+const bool                    PRINT_BEHAVIOUR = false;
+const int32_t                 NUMBER_OF_THREADS = torch::get_num_threads();
+const FilePath                INPUT_MIN_MAX_FILE_PATH = {};
+const FilePath                OUTPUT_MIN_MAX_FILE_PATH = {};
+const double                  LEARN_RATE = 0.001;
+const TimeoutDuration         MAX_EXECUTION_TIME = std::chrono::duration_cast<TimeoutDuration>(std::chrono::hours(24 * 7)); // TODO change to std::chrono::weeks when switching to C++20
+const uint32_t                NUMBER_OF_DETERIORATIONS = 0;
+const FilePath                PROGRESS_FILE_PATH = {};
+const std::optional<uint64_t> RANDOM_GENERATOR_SEED = std::nullopt;
 
 const std::string CLI_HELP_TEXT = {
   std::string("List of possible commandline parameters:\n") +
@@ -67,7 +68,8 @@ const std::string CLI_HELP_TEXT = {
   "--timeoutInMinutes X               : Sets the timeout of the program to X minutes. Default: 1 week.\n" +
   "--timeoutInHours X                 : Sets the timeout of the program to X hours. Default: 1 week.\n" +
   "--numberOfDeteriorations X         : Sets the number of epochs in a row in which the improvement can be worse than the set epsilon without stopping. Default: " + std::to_string(NUMBER_OF_DETERIORATIONS) + "\n" +
-  "--saveProgress <filepath>          : If set saves the progress in a CSV file at the specified path.\n"
+  "--saveProgress <filepath>          : If set saves the progress in a CSV file at the specified path.\n" +
+  "--seed <uint64>                    : Sets the seed of the random number generator, which is used for initializing the network parameters.\n"
 };
 
 }
@@ -76,7 +78,8 @@ enum class CLIParameters
 {
   Help, InputFilePath, NumberOfInputVariables, NumberOfOutputVariables, NumberOfEpochs, ShowProgressDuringTraining, InputNetworkParameters,
   OutputNetworkParameters, Interactive, Epsilon, LogScaling, SqrtScaling, LogLinScaling, LogSqrtScaling, Validate, ValidatePercentage, OutValues,
-  OutDiff, PrintBehaviour, Threads, InputMinMax, OutputMinMax, LearnRate, TimeoutMinutes, TimeoutHours, NumberOfDeteriorations, SaveProgress
+  OutDiff, PrintBehaviour, Threads, InputMinMax, OutputMinMax, LearnRate, TimeoutMinutes, TimeoutHours, NumberOfDeteriorations, SaveProgress,
+  Seed
 };
 
 const std::map<std::string, CLIParameters> CLIParameterMap {
@@ -112,39 +115,41 @@ const std::map<std::string, CLIParameters> CLIParameterMap {
   {"--timeoutInMinutes",      CLIParameters::TimeoutMinutes},
   {"--timeoutInHours",        CLIParameters::TimeoutHours},
   {"--numberOfDeteriorations",CLIParameters::NumberOfDeteriorations},
-  {"--saveProgress",          CLIParameters::SaveProgress}
+  {"--saveProgress",          CLIParameters::SaveProgress},
+  {"--seed",                  CLIParameters::Seed}
 };
 
 class ProgramOptions
 {
 public:
-  FilePath        InputDataFilePath {          DefaultValues::INPUT_DATA_FILE_PATH };
-  FilePath        InputNetworkParameters {     DefaultValues::INPUT_NETWORK_PARAMETERS };
-  FilePath        OutputNetworkParameters {    DefaultValues::OUTPUT_NETWORK_PARAMETERS };
-  uint32_t        NumberOfInputVariables {     DefaultValues::NUMBER_OF_INPUT_VARIABLES };
-  uint32_t        NumberOfOutputVariables {    DefaultValues::NUMBER_OF_OUTPUT_VARIABLES };
-  uint32_t        NumberOfEpochs {             DefaultValues::NUMBER_OF_EPOCHS };
-  bool            ShowProgressDuringTraining { DefaultValues::SHOW_PROGRESS_DURING_TRAINING };
-  bool            InteractiveMode {            DefaultValues::INTERACTIVE_MODE };
-  double          Epsilon {                    DefaultValues::EPSILON };
-  bool            LogScaling {                 DefaultValues::LOG_SCALING };
-  bool            SqrtScaling {                DefaultValues::SQRT_SCALING };
-  bool            LogLinScaling {              DefaultValues::LOG_LIN_SCALING };
-  bool            LogSqrtScaling {             DefaultValues::LOG_SQRT_SCALING };
-  uint32_t        MixedScalingInputVariable {  DefaultValues::MIXED_SCALING_INPUT_VARIABLE };
-  TensorDataType  MixedScalingThreshold {      DefaultValues::MIXED_SCALING_THRESHOLD };
-  bool            ValidateAfterTraining {      DefaultValues::VALIDATE_AFTER_TRAINING };
-  double          ValidationPercentage {       DefaultValues::VALIDATION_PERCENTAGE };
-  FilePath        OutputValuesFilePath {       DefaultValues::OUTPUT_VALUE };
-  FilePath        OutputDiffFilePath {         DefaultValues::OUTPUT_DIFF };
-  bool            PrintBehaviour {             DefaultValues::PRINT_BEHAVIOUR };
-  int32_t         NumberOfThreads {            DefaultValues::NUMBER_OF_THREADS };
-  FilePath        InputMinMaxFilePath {        DefaultValues::INPUT_MIN_MAX_FILE_PATH };
-  FilePath        OutputMinMaxFilePath {       DefaultValues::OUTPUT_MIN_MAX_FILE_PATH };
-  double          LearnRate {                  DefaultValues::LEARN_RATE };
-  TimeoutDuration MaxExecutionTime {           DefaultValues::MAX_EXECUTION_TIME };
-  uint32_t        NumberOfDeteriorations {     DefaultValues::NUMBER_OF_DETERIORATIONS };
-  FilePath        SaveProgressFilePath {       DefaultValues::PROGRESS_FILE_PATH };
+  FilePath                InputDataFilePath {          DefaultValues::INPUT_DATA_FILE_PATH };
+  FilePath                InputNetworkParameters {     DefaultValues::INPUT_NETWORK_PARAMETERS };
+  FilePath                OutputNetworkParameters {    DefaultValues::OUTPUT_NETWORK_PARAMETERS };
+  uint32_t                NumberOfInputVariables {     DefaultValues::NUMBER_OF_INPUT_VARIABLES };
+  uint32_t                NumberOfOutputVariables {    DefaultValues::NUMBER_OF_OUTPUT_VARIABLES };
+  uint32_t                NumberOfEpochs {             DefaultValues::NUMBER_OF_EPOCHS };
+  bool                    ShowProgressDuringTraining { DefaultValues::SHOW_PROGRESS_DURING_TRAINING };
+  bool                    InteractiveMode {            DefaultValues::INTERACTIVE_MODE };
+  double                  Epsilon {                    DefaultValues::EPSILON };
+  bool                    LogScaling {                 DefaultValues::LOG_SCALING };
+  bool                    SqrtScaling {                DefaultValues::SQRT_SCALING };
+  bool                    LogLinScaling {              DefaultValues::LOG_LIN_SCALING };
+  bool                    LogSqrtScaling {             DefaultValues::LOG_SQRT_SCALING };
+  uint32_t                MixedScalingInputVariable {  DefaultValues::MIXED_SCALING_INPUT_VARIABLE };
+  TensorDataType          MixedScalingThreshold {      DefaultValues::MIXED_SCALING_THRESHOLD };
+  bool                    ValidateAfterTraining {      DefaultValues::VALIDATE_AFTER_TRAINING };
+  double                  ValidationPercentage {       DefaultValues::VALIDATION_PERCENTAGE };
+  FilePath                OutputValuesFilePath {       DefaultValues::OUTPUT_VALUE };
+  FilePath                OutputDiffFilePath {         DefaultValues::OUTPUT_DIFF };
+  bool                    PrintBehaviour {             DefaultValues::PRINT_BEHAVIOUR };
+  int32_t                 NumberOfThreads {            DefaultValues::NUMBER_OF_THREADS };
+  FilePath                InputMinMaxFilePath {        DefaultValues::INPUT_MIN_MAX_FILE_PATH };
+  FilePath                OutputMinMaxFilePath {       DefaultValues::OUTPUT_MIN_MAX_FILE_PATH };
+  double                  LearnRate {                  DefaultValues::LEARN_RATE };
+  TimeoutDuration         MaxExecutionTime {           DefaultValues::MAX_EXECUTION_TIME };
+  uint32_t                NumberOfDeteriorations {     DefaultValues::NUMBER_OF_DETERIORATIONS };
+  FilePath                SaveProgressFilePath {       DefaultValues::PROGRESS_FILE_PATH };
+  std::optional<uint64_t> RNGSeed {                    DefaultValues::RANDOM_GENERATOR_SEED };
 };
 
 }

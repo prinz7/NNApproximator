@@ -303,6 +303,21 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
         }
         options.SaveProgressFilePath = std::string(argv[++i]);
         break;
+      case CLIParameters::Seed:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        try {
+          options.RNGSeed = std::make_optional(std::stoul(argv[++i]));
+        } catch (const std::invalid_argument& e) {
+          std::cout << "Could not convert " << std::string(argv[i]) << " to integer. Reason: " << e.what() << std::endl;
+          return std::nullopt;
+        } catch (const std::out_of_range& e) {
+          std::cout << std::string(argv[i]) << " is out of range. Error: " << e.what() << std::endl;
+          return std::nullopt;
+        }
+        break;
     }
   }
 
