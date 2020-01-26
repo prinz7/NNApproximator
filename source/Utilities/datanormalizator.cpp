@@ -6,7 +6,7 @@ namespace Utilities {
 
 namespace {
 
-const TensorDataType MINIMUM_ALLOWED_VALUE = 0.000'000'000'01;
+const TensorDataType MINIMUM_ALLOWED_VALUE = 1e-30;
 
 }
 
