@@ -329,147 +329,145 @@ double Logic::calculateMeanError(DataVector const& testData)
   return error / testData.size();
 }
 
-double Logic::calculateR2Score(DataVector const& testData)
+std::vector<double> Logic::calculateR2Score(DataVector const& testData)
 {
   if (testData.empty()) {
-    return 1.0;
+    return std::vector<double>();
   }
 
-  if (testData[0].second.size(0) > 1) {
-    std::cout << "R2 score not implemented for multidimensional output." << std::endl;
-    return 0.0;
+  std::vector<double> scores{};
+
+  for (int64_t i = 0; i < testData[0].second.size(0); ++i) {
+    double SQE = 0.0;
+    double SQT = 0.0;
+
+    TensorDataType y_cross = 0.0;
+    for (auto const&[x, y] : testData) {
+      (void) x;
+      y_cross += y[i].item<TensorDataType>();
+    }
+    y_cross /= testData.size();
+
+    for (auto const&[x, y] : testData) {
+      auto prediction = network->forward(x);
+
+      SQE += std::pow(prediction[i].item<TensorDataType>() - y_cross, 2.0);
+      SQT += std::pow(y[i].item<TensorDataType>() - y_cross, 2.0);
+    }
+
+    scores.push_back(SQE / SQT);
   }
-  double SQE = 0.0;
-  double SQT = 0.0;
 
-  TensorDataType y_cross = 0.0;
-  for (auto const& [x, y] : testData) {
-    (void) x;
-    y_cross += y[0].item<TensorDataType>();
-  }
-  y_cross /= testData.size();
-
-  for (auto const& [x, y] : testData) {
-    auto prediction = network->forward(x);
-
-    SQE += std::pow(prediction[0].item<TensorDataType>() - y_cross, 2.0);
-    SQT += std::pow(y[0].item<TensorDataType>() - y_cross, 2.0);
-  }
-
-  return SQE / SQT;
+  return scores;
 }
 
-double Logic::calculateR2ScoreAlternate(DataVector const& testData)
+std::vector<double> Logic::calculateR2ScoreAlternate(DataVector const& testData)
 {
   if (testData.empty()) {
-    return 1.0;
+    return std::vector<double>();
   }
 
-  if (testData[0].second.size(0) > 1) {
-    std::cout << "R2 score not implemented for multidimensional output." << std::endl;
-    return 0.0;
+  std::vector<double> scores{};
+
+  for (int64_t i = 0; i < testData[0].second.size(0); ++i) {
+    double SQR = 0.0;
+    double SQT = 0.0;
+
+    TensorDataType y_cross = 0.0;
+    for (auto const&[x, y] : testData) {
+      (void) x;
+      y_cross += y[i].item<TensorDataType>();
+    }
+    y_cross /= testData.size();
+
+    for (auto const&[x, y] : testData) {
+      auto prediction = network->forward(x);
+      TensorDataType yi = y[i].item<TensorDataType>();
+
+      SQR += std::pow(yi - prediction[i].item<TensorDataType>(), 2.0);
+      SQT += std::pow(yi - y_cross, 2.0);
+    }
+
+    scores.push_back(1.0 - (SQR / SQT));
   }
 
-  double SQR = 0.0;
-  double SQT = 0.0;
-
-  TensorDataType y_cross = 0.0;
-  for (auto const& [x, y] : testData) {
-    (void) x;
-    y_cross += y[0].item<TensorDataType>();
-  }
-  y_cross /= testData.size();
-
-  for (auto const& [x, y] : testData) {
-    auto prediction = network->forward(x);
-    TensorDataType yi = y[0].item<TensorDataType>();
-
-    SQR += std::pow(yi - prediction[0].item<TensorDataType>(), 2.0);
-    SQT += std::pow(yi - y_cross, 2.0);
-  }
-
-  return 1.0 - (SQR / SQT);
+  return scores;
 }
 
-double Logic::calculateR2ScoreAlternateDenormalized(DataVector const& testData)
+std::vector<double> Logic::calculateR2ScoreAlternateDenormalized(DataVector const& testData)
 {
   if (testData.empty()) {
-    return 1.0;
+    return std::vector<double>();
   }
 
-  if (testData[0].second.size(0) > 1) {
-    std::cout << "R2 score not implemented for multidimensional output." << std::endl;
-    return 0.0;
-  }
+  std::vector<double> scores{};
 
-  double SQR = 0.0;
-  double SQT = 0.0;
+  for (int64_t i = 0; i < testData[0].second.size(0); ++i) {
+    double SQR = 0.0;
+    double SQT = 0.0;
 
-  TensorDataType y_cross = 0.0;
-  for (auto const& [x, y] : testData) {
-    auto yD = y.clone();
-    denormalizeOutputTensor(x, yD, false);
+    TensorDataType y_cross = 0.0;
+    for (auto const&[x, y] : testData) {
+      auto yD = y.clone();
+      denormalizeOutputTensor(x, yD, false);
 
-    if (options.LogScaling) {
-      Utilities::DataNormalizator::UnscaleLogarithmic(yD);
-    }
-    else if (options.SqrtScaling) {
-      Utilities::DataNormalizator::UnscaleSquareRoot(yD);
-    }
-    else if (options.LogLinScaling) {
-      if (x[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
+      if (options.LogScaling) {
         Utilities::DataNormalizator::UnscaleLogarithmic(yD);
-      }
-    }
-    else if (options.LogSqrtScaling) {
-      if (x[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-        Utilities::DataNormalizator::UnscaleLogarithmic(yD);
-      } else {
+      } else if (options.SqrtScaling) {
         Utilities::DataNormalizator::UnscaleSquareRoot(yD);
+      } else if (options.LogLinScaling) {
+        if (x[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
+          Utilities::DataNormalizator::UnscaleLogarithmic(yD);
+        }
+      } else if (options.LogSqrtScaling) {
+        if (x[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
+          Utilities::DataNormalizator::UnscaleLogarithmic(yD);
+        } else {
+          Utilities::DataNormalizator::UnscaleSquareRoot(yD);
+        }
       }
-    }
 
-    y_cross += yD[0].item<TensorDataType>();
-  }
-  y_cross /= testData.size();
-
-  for (auto const& [x, y] : testData) {
-    auto prediction = network->forward(x);
-    auto yD = y.clone();
-    denormalizeOutputTensor(x, yD, false);
-    denormalizeOutputTensor(x, prediction, false);
-
-    if (options.LogScaling) {
-      Utilities::DataNormalizator::UnscaleLogarithmic(yD);
-      Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
+      y_cross += yD[i].item<TensorDataType>();
     }
-    else if (options.SqrtScaling) {
-      Utilities::DataNormalizator::UnscaleSquareRoot(yD);
-      Utilities::DataNormalizator::UnscaleSquareRoot(prediction);
-    }
-    else if (options.LogLinScaling) {
-      if (x[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
+    y_cross /= testData.size();
+
+    for (auto const&[x, y] : testData) {
+      auto prediction = network->forward(x);
+      auto yD = y.clone();
+      denormalizeOutputTensor(x, yD, false);
+      denormalizeOutputTensor(x, prediction, false);
+
+      if (options.LogScaling) {
         Utilities::DataNormalizator::UnscaleLogarithmic(yD);
         Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
-      }
-    }
-    else if (options.LogSqrtScaling) {
-      if (x[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-        Utilities::DataNormalizator::UnscaleLogarithmic(yD);
-        Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
-      } else {
+      } else if (options.SqrtScaling) {
         Utilities::DataNormalizator::UnscaleSquareRoot(yD);
         Utilities::DataNormalizator::UnscaleSquareRoot(prediction);
+      } else if (options.LogLinScaling) {
+        if (x[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
+          Utilities::DataNormalizator::UnscaleLogarithmic(yD);
+          Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
+        }
+      } else if (options.LogSqrtScaling) {
+        if (x[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
+          Utilities::DataNormalizator::UnscaleLogarithmic(yD);
+          Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
+        } else {
+          Utilities::DataNormalizator::UnscaleSquareRoot(yD);
+          Utilities::DataNormalizator::UnscaleSquareRoot(prediction);
+        }
       }
+
+      TensorDataType yi = yD[i].item<TensorDataType>();
+
+      SQR += std::pow(yi - prediction[i].item<TensorDataType>(), 2.0);
+      SQT += std::pow(yi - y_cross, 2.0);
     }
 
-    TensorDataType yi = yD[0].item<TensorDataType>();
-
-    SQR += std::pow(yi - prediction[0].item<TensorDataType>(), 2.0);
-    SQT += std::pow(yi - y_cross, 2.0);
+    scores.push_back(1.0 - (SQR / SQT));
   }
 
-  return 1.0 - (SQR / SQT);
+  return scores;
 }
 
 void Logic::outputBehaviour(DataVector const& data)

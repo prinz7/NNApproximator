@@ -18,7 +18,8 @@ using MinMaxValues = std::pair<MinMaxVector, MinMaxVector>;
 using MixedMinMaxValues = std::pair<MinMaxValues, MinMaxValues>;
 
 using ProgressVector = std::vector<LearnProgressDataSet>;
-const std::string LEARN_PROGRESS_FILE_HEADER = "Epoch, R2Score, MeanSquaredError, ElapsedTimeInMS";
+const std::string LEARN_PROGRESS_FILE_HEADER_FIRST_PART = "Epoch, MeanSquaredError, ElapsedTimeInMS";
+const std::string LEARN_PROGRESS_R2_SCORE_HEADER_PART = ", R2Score_";
 
 using FilePath = std::string;
 using TimeoutDuration = std::chrono::milliseconds;
@@ -29,7 +30,7 @@ class LearnProgressDataSet
 {
 public:
   uint32_t epoch;
-  double r2Score;
+  std::vector<double> r2Score;
   double meanSquaredError;
   uint64_t elapsedTimeInMS;
 };

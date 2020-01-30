@@ -18,11 +18,11 @@ private:
   [[nodiscard]]
   double calculateMeanError(DataVector const& testData);
   [[nodiscard]]
-  double calculateR2Score(DataVector const& testData);
+  std::vector<double> calculateR2Score(DataVector const& testData);
   [[nodiscard]]
-  double calculateR2ScoreAlternate(DataVector const& testData);
+  std::vector<double> calculateR2ScoreAlternate(DataVector const& testData);
   [[nodiscard]]
-  double calculateR2ScoreAlternateDenormalized(DataVector const& testData);
+  std::vector<double> calculateR2ScoreAlternateDenormalized(DataVector const& testData);
   void outputBehaviour(DataVector const& data);
   void saveValuesToFile(DataVector const& data, std::string const& outputPath);
   void saveDiffToFile(DataVector const& data, std::string const& outputPath);

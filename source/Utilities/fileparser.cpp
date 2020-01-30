@@ -87,10 +87,18 @@ void FileParser::SaveProgressData(ProgressVector const& data, std::string const&
   }
   std::ofstream outputFile(filePath);
 
-  outputFile << LEARN_PROGRESS_FILE_HEADER << "\n";
+  outputFile << LEARN_PROGRESS_FILE_HEADER_FIRST_PART;
+  for (size_t i = 1; i <= data[0].r2Score.size(); ++i) {
+    outputFile << LEARN_PROGRESS_R2_SCORE_HEADER_PART << i;
+  }
+  outputFile << "\n";
 
   for (auto const& [epoch, r2score, meanSquaredError, elapsedTimeInMS] : data) {
-    outputFile << epoch << ", " << r2score << ", " << meanSquaredError << ", " << elapsedTimeInMS << "\n";
+    outputFile << epoch << ", " << meanSquaredError << ", " << elapsedTimeInMS;
+    for (auto score : r2score) {
+      outputFile << ", " << score;
+    }
+    outputFile << "\n";
   }
 
   outputFile.close();
