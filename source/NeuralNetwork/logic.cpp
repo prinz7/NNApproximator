@@ -600,7 +600,7 @@ void Logic::saveDiffToFile(DataVector const& data, std::string const& path, bool
 
     torch::Tensor difference;
     if (outputRelativeDiff) {
-
+      difference = calculateRelativeDiff(dOutputTensor, prediction);
     } else {
       difference = calculateDiff(dOutputTensor, prediction);
     }
