@@ -129,7 +129,11 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   }
 
   if (options.OutputDiffFilePath != Utilities::DefaultValues::OUTPUT_DIFF) {
-    saveDiffToFile(*dataOpt, options.OutputDiffFilePath);
+    saveDiffToFile(*dataOpt, options.OutputDiffFilePath, false);
+  }
+
+  if (options.OutputRelativeDiffFilePath != Utilities::DefaultValues::OUTPUT_RELATIVE_DIFF) {
+    saveDiffToFile(*dataOpt, options.OutputRelativeDiffFilePath, true);
   }
 
   if (options.SaveProgressFilePath != Utilities::DefaultValues::PROGRESS_FILE_PATH) {
@@ -556,7 +560,7 @@ void Logic::saveValuesToFile(DataVector const& data, std::string const& path)
   Utilities::FileParser::SaveData(values, path, inputFileHeader);
 }
 
-void Logic::saveDiffToFile(DataVector const& data, std::string const& path)
+void Logic::saveDiffToFile(DataVector const& data, std::string const& path, bool outputRelativeDiff)
 {
   DataVector diff(data.size());
 
@@ -594,21 +598,39 @@ void Logic::saveDiffToFile(DataVector const& data, std::string const& path)
       }
     }
 
-    diff[i++] = std::make_pair(dInputTensor, calculateDiff(dOutputTensor, prediction));
+    torch::Tensor difference;
+    if (outputRelativeDiff) {
+
+    } else {
+      difference = calculateDiff(dOutputTensor, prediction);
+    }
+
+    diff[i++] = std::make_pair(dInputTensor, difference);
   }
 
   Utilities::FileParser::SaveData(diff, path, inputFileHeader);
 }
 
-torch::Tensor Logic::calculateDiff(torch::Tensor const& input1, torch::Tensor const& input2) const
+torch::Tensor Logic::calculateDiff(torch::Tensor const& wantedValue, torch::Tensor const& actualValue) const
 {
-  auto output = input1.clone();
+  auto output = wantedValue.clone();
 
-  for (int64_t i = 0; i < input1.size(0); ++i) {
-    output[i] -= input2[i].item<TensorDataType>();
+  for (int64_t i = 0; i < wantedValue.size(0); ++i) {
+    output[i] -= actualValue[i].item<TensorDataType>();
   }
 
   return output;
+}
+
+torch::Tensor Logic::calculateRelativeDiff(torch::Tensor const& wantedValue, torch::Tensor const& actualValue) const
+{
+  auto diff = calculateDiff(wantedValue, actualValue);
+
+  for (int64_t i = 0; i < wantedValue.size(0); ++i) {
+    diff[i] /= wantedValue[i].item<TensorDataType>();
+  }
+
+  return diff;
 }
 
 void Logic::saveMinMaxToFile() const

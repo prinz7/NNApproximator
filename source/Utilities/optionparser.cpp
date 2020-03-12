@@ -205,6 +205,13 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
         }
         options.OutputDiffFilePath = std::string(argv[++i]);
         break;
+      case CLIParameters::OutRelativeDiff:
+        if (i + 1 >= argc) {
+          std::cout << "Not enough parameters after " << inputString << std::endl;
+          return std::nullopt;
+        }
+        options.OutputRelativeDiffFilePath = std::string(argv[++i]);
+        break;
       case CLIParameters::PrintBehaviour:
         options.PrintBehaviour = true;
         break;

@@ -25,9 +25,11 @@ private:
   std::vector<double> calculateR2ScoreAlternateDenormalized(DataVector const& testData);
   void outputBehaviour(DataVector const& data);
   void saveValuesToFile(DataVector const& data, std::string const& outputPath);
-  void saveDiffToFile(DataVector const& data, std::string const& outputPath);
+  void saveDiffToFile(DataVector const& data, std::string const& outputPath, bool outputRelativeDifference);
   [[nodiscard]]
-  torch::Tensor calculateDiff(torch::Tensor const& input1, torch::Tensor const& input2) const;
+  torch::Tensor calculateDiff(torch::Tensor const& wantedValue, torch::Tensor const& actualValue) const;
+  [[nodiscard]]
+  torch::Tensor calculateRelativeDiff(torch::Tensor const& wantedValue, torch::Tensor const& actualValue) const;
   void saveMinMaxToFile() const;
   void denormalizeInputTensor(torch::Tensor& tensor, bool limitValues = false);
   void denormalizeOutputTensor(torch::Tensor const& inputTensor, torch::Tensor& outputTensor, bool limitValues = false);

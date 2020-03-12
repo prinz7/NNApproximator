@@ -30,6 +30,7 @@ const bool                    VALIDATE_AFTER_TRAINING = false;
 const double                  VALIDATION_PERCENTAGE = 30.0;
 const FilePath                OUTPUT_VALUE = {};
 const FilePath                OUTPUT_DIFF = {};
+const FilePath                OUTPUT_RELATIVE_DIFF = {};
 const bool                    PRINT_BEHAVIOUR = false;
 const int32_t                 NUMBER_OF_THREADS = torch::get_num_threads();
 const FilePath                INPUT_MIN_MAX_FILE_PATH = {};
@@ -60,6 +61,7 @@ const std::string CLI_HELP_TEXT = {
   "--validatePercentage <double>      : Sets the percentage of the data, which is only used for validation and not for training. Value should be between 0 and 100. Default: " + std::to_string(VALIDATION_PERCENTAGE) + "\n" +
   "--outValues <filepath>             : If set saves the output of the neural network for all input values to the specified file.\n" +
   "--outDiff <filepath>               : If set saves the difference of the output of the neural network and given input values to the specified file.\n" +
+  "--outRelativeDiff <filepath>       : If set saves the relative difference of the output of the neural network and given input values to the specified file.\n" +
   "--printBehaviour                   : If set outputs the behaviour of the neural network to the console for the given input values.\n" +
   "--threads X | -t X                 : Sets the number of used threads to X. Default value depends on the given system. Default value of the current system: " + std::to_string(NUMBER_OF_THREADS) + "\n" +
   "--inMinMax <filepath>              : If set uses the data in the given file to use as min/max values for normalization.\n" +
@@ -78,8 +80,8 @@ enum class CLIParameters
 {
   Help, InputFilePath, NumberOfInputVariables, NumberOfOutputVariables, NumberOfEpochs, ShowProgressDuringTraining, InputNetworkParameters,
   OutputNetworkParameters, Interactive, Epsilon, LogScaling, SqrtScaling, LogLinScaling, LogSqrtScaling, Validate, ValidatePercentage, OutValues,
-  OutDiff, PrintBehaviour, Threads, InputMinMax, OutputMinMax, LearnRate, TimeoutMinutes, TimeoutHours, NumberOfDeteriorations, SaveProgress,
-  Seed
+  OutDiff, OutRelativeDiff, PrintBehaviour, Threads, InputMinMax, OutputMinMax, LearnRate, TimeoutMinutes, TimeoutHours, NumberOfDeteriorations,
+  SaveProgress, Seed
 };
 
 const std::map<std::string, CLIParameters> CLIParameterMap {
@@ -106,6 +108,7 @@ const std::map<std::string, CLIParameters> CLIParameterMap {
   {"--validatePercentage",    CLIParameters::ValidatePercentage},
   {"--outValues",             CLIParameters::OutValues},
   {"--outDiff",               CLIParameters::OutDiff},
+  {"--outRelativeDiff",       CLIParameters::OutRelativeDiff},
   {"--printBehaviour",        CLIParameters::PrintBehaviour},
   {"--threads",               CLIParameters::Threads},
   {"-t",                      CLIParameters::Threads},
@@ -141,6 +144,7 @@ public:
   double                  ValidationPercentage {       DefaultValues::VALIDATION_PERCENTAGE };
   FilePath                OutputValuesFilePath {       DefaultValues::OUTPUT_VALUE };
   FilePath                OutputDiffFilePath {         DefaultValues::OUTPUT_DIFF };
+  FilePath                OutputRelativeDiffFilePath { DefaultValues::OUTPUT_RELATIVE_DIFF };
   bool                    PrintBehaviour {             DefaultValues::PRINT_BEHAVIOUR };
   int32_t                 NumberOfThreads {            DefaultValues::NUMBER_OF_THREADS };
   FilePath                InputMinMaxFilePath {        DefaultValues::INPUT_MIN_MAX_FILE_PATH };
