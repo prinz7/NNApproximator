@@ -102,7 +102,12 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     saveMinMaxToFile();
   }
 
-  network = Network{options.NumberOfInputVariables, options.NumberOfOutputVariables, std::vector<uint32_t>{500, 500}}; // TODO fix hardcoded value
+  auto networkConfiguration = std::vector<uint32_t>();
+  for (uint32_t i = 0; i < options.NumberOfLayers; ++i) {
+    networkConfiguration.push_back(options.NumberOfNodesPerLayer);
+  }
+
+  network = Network{options.NumberOfInputVariables, options.NumberOfOutputVariables, networkConfiguration};
 
   if (options.InputNetworkParameters != Utilities::DefaultValues::INPUT_NETWORK_PARAMETERS) {
     torch::load(network, options.InputNetworkParameters);

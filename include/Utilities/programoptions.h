@@ -40,6 +40,8 @@ const TimeoutDuration         MAX_EXECUTION_TIME = std::chrono::duration_cast<Ti
 const uint32_t                NUMBER_OF_DETERIORATIONS = 0;
 const FilePath                PROGRESS_FILE_PATH = {};
 const std::optional<uint64_t> RANDOM_GENERATOR_SEED = std::nullopt;
+const uint32_t                NUMBER_OF_LAYERS = 2;
+const uint32_t                NUMBER_OF_NODES_PER_LAYER = 500;
 
 const std::string CLI_HELP_TEXT = {
   std::string("List of possible commandline parameters:\n") +
@@ -71,7 +73,9 @@ const std::string CLI_HELP_TEXT = {
   "--timeoutInHours X                 : Sets the timeout of the program to X hours. Default: 1 week.\n" +
   "--numberOfDeteriorations X         : Sets the number of epochs in a row in which the improvement can be worse than the set epsilon without stopping. Default: " + std::to_string(NUMBER_OF_DETERIORATIONS) + "\n" +
   "--saveProgress <filepath>          : If set saves the progress in a CSV file at the specified path.\n" +
-  "--seed <uint64>                    : Sets the seed of the random number generator, which is used for initializing the network parameters.\n"
+  "--seed <uint64>                    : Sets the seed of the random number generator, which is used for initializing the network parameters.\n" +
+  "--layers X                         : Sets the number of layers of the NN to X. Default: " + std::to_string(NUMBER_OF_LAYERS) + "\n" +
+  "--nodes X                          : Sets the number of nodes per layer of the NN to X. Default: " + std::to_string(NUMBER_OF_NODES_PER_LAYER) + "\n"
 };
 
 }
@@ -81,7 +85,7 @@ enum class CLIParameters
   Help, InputFilePath, NumberOfInputVariables, NumberOfOutputVariables, NumberOfEpochs, ShowProgressDuringTraining, InputNetworkParameters,
   OutputNetworkParameters, Interactive, Epsilon, LogScaling, SqrtScaling, LogLinScaling, LogSqrtScaling, Validate, ValidatePercentage, OutValues,
   OutDiff, OutRelativeDiff, PrintBehaviour, Threads, InputMinMax, OutputMinMax, LearnRate, TimeoutMinutes, TimeoutHours, NumberOfDeteriorations,
-  SaveProgress, Seed
+  SaveProgress, Seed, NumberOfLayers, NumberOfNodes
 };
 
 const std::map<std::string, CLIParameters> CLIParameterMap {
@@ -119,7 +123,9 @@ const std::map<std::string, CLIParameters> CLIParameterMap {
   {"--timeoutInHours",        CLIParameters::TimeoutHours},
   {"--numberOfDeteriorations",CLIParameters::NumberOfDeteriorations},
   {"--saveProgress",          CLIParameters::SaveProgress},
-  {"--seed",                  CLIParameters::Seed}
+  {"--seed",                  CLIParameters::Seed},
+  {"--layers",                CLIParameters::NumberOfLayers},
+  {"--nodes",                 CLIParameters::NumberOfNodes}
 };
 
 class ProgramOptions
@@ -154,6 +160,8 @@ public:
   uint32_t                NumberOfDeteriorations {     DefaultValues::NUMBER_OF_DETERIORATIONS };
   FilePath                SaveProgressFilePath {       DefaultValues::PROGRESS_FILE_PATH };
   std::optional<uint64_t> RNGSeed {                    DefaultValues::RANDOM_GENERATOR_SEED };
+  uint32_t                NumberOfLayers {             DefaultValues::NUMBER_OF_LAYERS };
+  uint32_t                NumberOfNodesPerLayer {      DefaultValues::NUMBER_OF_NODES_PER_LAYER };
 };
 
 }

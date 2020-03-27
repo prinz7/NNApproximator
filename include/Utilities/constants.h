@@ -9,6 +9,8 @@ class LearnProgressDataSet;
 
 // Type definitions & constants:
 
+const uint32_t MaxNumberOfNodes = 10000;
+
 using TensorDataType = double;
 const torch::ScalarType TORCH_DATA_TYPE = torch::kDouble;
 
