@@ -50,6 +50,9 @@ private:
   std::string inputFileHeader {};
 
   ProgressVector trainingProgress {};
+
+  bool useBatchTraining = false;
+  BatchMap batchedTrainingData = BatchMap();
 };
 
 }

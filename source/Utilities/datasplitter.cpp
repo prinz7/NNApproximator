@@ -27,7 +27,7 @@ std::pair<DataVector, DataVector> DataSplitter::splitDataRandomly(DataVector con
   return std::make_pair(trainingData, validationData);
 }
 
-std::pair<DataVector, DataVector> DataSplitter::splitDataWithThreshold(DataVector const& data, uint32_t thresholdVariable, TensorDataType threshold)
+std::pair<DataVector, DataVector> DataSplitter::splitDataWithThreshold(DataVector const& data, uint32_t const thresholdVariable, TensorDataType const threshold)
 {
   DataVector belowAndEqualThreshold{};
   DataVector aboveThreshold{};
@@ -41,6 +41,27 @@ std::pair<DataVector, DataVector> DataSplitter::splitDataWithThreshold(DataVecto
   }
 
   return std::make_pair(belowAndEqualThreshold, aboveThreshold);
+}
+
+BatchMap DataSplitter::splitDataIntoBatches(DataVector const& data, uint32_t const batchVariable) {
+  BatchMap batches{};
+
+  for (auto const& entry : data) {
+    std::string identifier {};
+    for (int64_t i = 0; i < entry.first.size(0); ++i) {
+      if (i != batchVariable) {
+        identifier += std::to_string(i) + "->" + std::to_string(entry.first[i].item<TensorDataType>());
+      }
+    }
+
+    auto result = batches.insert(std::make_pair(identifier, DataVector{entry}));
+
+    if (!result.second) {
+      result.first->second.push_back(entry);
+    }
+  }
+
+  return batches;
 }
 
 }

@@ -11,6 +11,10 @@ namespace NeuralNetwork {
 bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
 {
   options = user_options;
+
+  if (options.DebugOutput) {
+    std::cout << "Read input file..." << std::endl;
+  }
   auto dataOpt = Utilities::FileParser::ParseInputFile(options.InputDataFilePath, options.NumberOfInputVariables,
     options.NumberOfOutputVariables, inputFileHeader);
   if (!dataOpt) {
@@ -22,6 +26,10 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
 
   if (options.RNGSeed) {
     torch::manual_seed(*options.RNGSeed);
+  }
+
+  if (options.DebugOutput) {
+    std::cout << "Scale the output tensors..." << std::endl;
   }
 
   if (options.LogScaling) {
@@ -50,6 +58,10 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     }
   }
 
+  if (options.DebugOutput) {
+    std::cout << "Get min/max values..." << std::endl;
+  }
+
   // Get min/max values
   if (options.InputMinMaxFilePath != Utilities::DefaultValues::INPUT_MIN_MAX_FILE_PATH) {
     if (useMixedScaling) {
@@ -73,6 +85,10 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     } else {
       Utilities::DataNormalizator::CalculateMinMax(*dataOpt, minMax);
     }
+  }
+
+  if (options.DebugOutput) {
+    std::cout << "Normalize values..." << std::endl;
   }
 
   // Normalize
@@ -102,6 +118,10 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     saveMinMaxToFile();
   }
 
+  if (options.DebugOutput) {
+    std::cout << "Configure network..." << std::endl;
+  }
+
   auto networkConfiguration = std::vector<uint32_t>();
   for (uint32_t i = 0; i < options.NumberOfLayers; ++i) {
     networkConfiguration.push_back(options.NumberOfNodesPerLayer);
@@ -121,7 +141,26 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     data = std::make_pair(*dataOpt, DataVector());
   }
 
+  if (options.BatchVariable.has_value()) {
+    useBatchTraining = true;
+
+    batchedTrainingData = Utilities::DataSplitter::splitDataIntoBatches(data.first, options.BatchVariable.value());
+
+    if (options.DebugOutput) {
+      std::cout << "Split training data (" << data.first.size() << " data points) into " << batchedTrainingData.size() << " batches." << std::endl;
+      std::cout << "Size of first batch: " << batchedTrainingData.begin()->second.size() << std::endl;
+    }
+  }
+
+  if (options.DebugOutput) {
+    std::cout << "Start the training..." << std::endl;
+  }
+
   trainNetwork(data.first);
+
+  if (options.DebugOutput) {
+    std::cout << "Training finished." << std::endl;
+  }
 
   network->eval();
 
@@ -182,14 +221,10 @@ void Logic::trainNetwork(DataVector const& data)
     return;
   }
 
-  DataVector randomlyShuffledData(data);
   auto const& numberOfEpochs = options.NumberOfEpochs;
   bool saveProgress = options.SaveProgressFilePath != Utilities::DefaultValues::PROGRESS_FILE_PATH;
 
   torch::optim::SGD optimizer(network->parameters(), options.LearnRate);
-
-//  std::random_device rd;
-//  std::mt19937 g(rd());
 
   auto lastMeanError = calculateMeanError(data);
   auto currentMeanError = lastMeanError;
@@ -200,7 +235,6 @@ void Logic::trainNetwork(DataVector const& data)
   auto start = std::chrono::steady_clock::now();
 
   for (uint32_t epoch = 1; epoch <= numberOfEpochs || continueTraining; ++epoch) {
-//    std::shuffle(randomlyShuffledData.begin(), randomlyShuffledData.end(), g);
     auto elapsed = std::chrono::duration_cast<TimeoutDuration>(std::chrono::steady_clock::now() - start);
     auto remaining = ((elapsed / std::max(epoch - 1, 1u)) * (numberOfEpochs - epoch + 1));
     lastMeanError = currentMeanError;
@@ -246,17 +280,34 @@ void Logic::trainNetwork(DataVector const& data)
       break;
     }
 
-    for (auto const& [x, y] : randomlyShuffledData) {
-      auto prediction = network->forward(x);
+    if (useBatchTraining) {
+      for (auto const& [identifier, batch] : batchedTrainingData) {
+        (void) identifier;
 
-      auto loss = torch::mse_loss(prediction, y);
+        optimizer.zero_grad();
+
+        for (auto const& [x, y] : batch) {
+          auto prediction = network->forward(x);
+          auto loss = torch::mse_loss(prediction, y);
+
+          loss.backward();
+        }
+
+        optimizer.step();
+      }
+    } else {
+      for (auto const& [x, y] : data) {
+        auto prediction = network->forward(x);
+
+        auto loss = torch::mse_loss(prediction, y);
 //      auto loss = torch::kl_div(prediction, y);
 //      auto loss = torch::nll_loss(prediction, y);
 
-      optimizer.zero_grad();
+        optimizer.zero_grad();
 
-      loss.backward();
-      optimizer.step();
+        loss.backward();
+        optimizer.step();
+      }
     }
   }
 
