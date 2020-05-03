@@ -6,7 +6,7 @@ namespace NeuralNetwork {
   {
   }
 
-  double NetworkAnalyzer::calculateMeanError(DataVector const& testData)
+  double NetworkAnalyzer::calculateMeanSquaredError(DataVector const& testData)
   {
     double error = 0;
     for (auto const& [x, y] : testData) {

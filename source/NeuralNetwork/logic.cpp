@@ -227,7 +227,7 @@ void Logic::trainNetwork(DataVector const& data)
 
   torch::optim::SGD optimizer(network->parameters(), options.LearnRate);
 
-  auto lastMeanError = analyzer->calculateMeanError(data);
+  auto lastMeanError = analyzer->calculateMeanSquaredError(data);
   auto currentMeanError = lastMeanError;
 
   bool continueTraining = true;
@@ -239,7 +239,7 @@ void Logic::trainNetwork(DataVector const& data)
     auto elapsed = std::chrono::duration_cast<TimeoutDuration>(std::chrono::steady_clock::now() - start);
     auto remaining = ((elapsed / std::max(epoch - 1, 1u)) * (numberOfEpochs - epoch + 1));
     lastMeanError = currentMeanError;
-    currentMeanError = analyzer->calculateMeanError(data);
+    currentMeanError = analyzer->calculateMeanSquaredError(data);
 
     if (lastMeanError - currentMeanError < options.Epsilon) {
       ++numberOfDeteriorationsInRow;

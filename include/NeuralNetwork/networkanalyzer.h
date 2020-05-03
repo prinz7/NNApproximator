@@ -12,7 +12,7 @@ namespace NeuralNetwork {
 
   public:
     [[nodiscard]]
-    double calculateMeanError(DataVector const& testData);
+    double calculateMeanSquaredError(DataVector const& testData);
     [[nodiscard]]
     std::vector<double> calculateR2Score(DataVector const& testData);
     [[nodiscard]]
