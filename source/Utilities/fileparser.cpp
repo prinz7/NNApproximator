@@ -4,7 +4,7 @@
 
 namespace Utilities {
 
-std::optional<DataVector> FileParser::ParseInputFile(const std::string& path, uint32_t numberOfInputNodes, uint32_t numberOfOutputNodes, std::string& fileHeader)
+std::optional<DataVector> FileParser::ParseInputFile(std::string const& path, uint32_t const numberOfInputNodes, uint32_t const numberOfOutputNodes, std::string& fileHeader)
 {
   auto data = DataVector();
 

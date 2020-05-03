@@ -128,6 +128,7 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   }
 
   network = Network{options.NumberOfInputVariables, options.NumberOfOutputVariables, networkConfiguration};
+  analyzer = std::make_unique<NetworkAnalyzer>(network);
 
   if (options.InputNetworkParameters != Utilities::DefaultValues::INPUT_NETWORK_PARAMETERS) {
     torch::load(network, options.InputNetworkParameters);
@@ -187,15 +188,15 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   // Output behaviour of network:
   if (options.PrintBehaviour) {
     if (options.ValidateAfterTraining) {
-      std::cout << "R2 score (training): " << calculateR2Score(data.first) << std::endl;
-      std::cout << "R2 score alternate (training): " << calculateR2ScoreAlternate(data.first) << std::endl;
+      std::cout << "R2 score (training): " << analyzer->calculateR2Score(data.first) << std::endl;
+      std::cout << "R2 score alternate (training): " << analyzer->calculateR2ScoreAlternate(data.first) << std::endl;
       std::cout << "R2 score alternate denormalized (training): " << calculateR2ScoreAlternateDenormalized(data.first) << std::endl;
-      std::cout << "R2 score (validation): " << calculateR2Score(data.second) << std::endl;
-      std::cout << "R2 score alternate (validation): " << calculateR2ScoreAlternate(data.second) << std::endl;
+      std::cout << "R2 score (validation): " << analyzer->calculateR2Score(data.second) << std::endl;
+      std::cout << "R2 score alternate (validation): " << analyzer->calculateR2ScoreAlternate(data.second) << std::endl;
       std::cout << "R2 score alternate denormalized (validation): " << calculateR2ScoreAlternateDenormalized(data.second) << std::endl;
     }
-    std::cout << "R2 score (all): " << calculateR2Score(*dataOpt) << std::endl;
-    std::cout << "R2 score alternate (all): " << calculateR2ScoreAlternate(*dataOpt) << std::endl;
+    std::cout << "R2 score (all): " << analyzer->calculateR2Score(*dataOpt) << std::endl;
+    std::cout << "R2 score alternate (all): " << analyzer->calculateR2ScoreAlternate(*dataOpt) << std::endl;
     std::cout << "R2 score alternate denormalized (all): " << calculateR2ScoreAlternateDenormalized(*dataOpt) << std::endl;
 
     if (options.ValidateAfterTraining) {
@@ -226,7 +227,7 @@ void Logic::trainNetwork(DataVector const& data)
 
   torch::optim::SGD optimizer(network->parameters(), options.LearnRate);
 
-  auto lastMeanError = calculateMeanError(data);
+  auto lastMeanError = analyzer->calculateMeanError(data);
   auto currentMeanError = lastMeanError;
 
   bool continueTraining = true;
@@ -238,7 +239,7 @@ void Logic::trainNetwork(DataVector const& data)
     auto elapsed = std::chrono::duration_cast<TimeoutDuration>(std::chrono::steady_clock::now() - start);
     auto remaining = ((elapsed / std::max(epoch - 1, 1u)) * (numberOfEpochs - epoch + 1));
     lastMeanError = currentMeanError;
-    currentMeanError = calculateMeanError(data);
+    currentMeanError = analyzer->calculateMeanError(data);
 
     if (lastMeanError - currentMeanError < options.Epsilon) {
       ++numberOfDeteriorationsInRow;
@@ -250,7 +251,7 @@ void Logic::trainNetwork(DataVector const& data)
     }
 
     if (saveProgress) {
-      auto r2score = calculateR2ScoreAlternate(data);
+      auto r2score = analyzer->calculateR2ScoreAlternate(data);
       trainingProgress.emplace_back(LearnProgressDataSet{
         epoch,
         r2score,
@@ -376,82 +377,6 @@ void Logic::performInteractiveMode()
       currentVariable = 0;
     }
   }
-}
-
-double Logic::calculateMeanError(DataVector const& testData)
-{
-  double error = 0;
-  for (auto const& [x, y] : testData) {
-    auto prediction = network->forward(x);
-    auto loss = torch::mse_loss(prediction, y);
-    error += loss.item<double>();
-  }
-  return error / testData.size();
-}
-
-std::vector<double> Logic::calculateR2Score(DataVector const& testData)
-{
-  if (testData.empty()) {
-    return std::vector<double>();
-  }
-
-  std::vector<double> scores{};
-
-  for (int64_t i = 0; i < testData[0].second.size(0); ++i) {
-    double SQE = 0.0;
-    double SQT = 0.0;
-
-    TensorDataType y_cross = 0.0;
-    for (auto const&[x, y] : testData) {
-      (void) x;
-      y_cross += y[i].item<TensorDataType>();
-    }
-    y_cross /= testData.size();
-
-    for (auto const&[x, y] : testData) {
-      auto prediction = network->forward(x);
-
-      SQE += std::pow(prediction[i].item<TensorDataType>() - y_cross, 2.0);
-      SQT += std::pow(y[i].item<TensorDataType>() - y_cross, 2.0);
-    }
-
-    scores.push_back(SQE / SQT);
-  }
-
-  return scores;
-}
-
-std::vector<double> Logic::calculateR2ScoreAlternate(DataVector const& testData)
-{
-  if (testData.empty()) {
-    return std::vector<double>();
-  }
-
-  std::vector<double> scores{};
-
-  for (int64_t i = 0; i < testData[0].second.size(0); ++i) {
-    double SQR = 0.0;
-    double SQT = 0.0;
-
-    TensorDataType y_cross = 0.0;
-    for (auto const&[x, y] : testData) {
-      (void) x;
-      y_cross += y[i].item<TensorDataType>();
-    }
-    y_cross /= testData.size();
-
-    for (auto const&[x, y] : testData) {
-      auto prediction = network->forward(x);
-      TensorDataType yi = y[i].item<TensorDataType>();
-
-      SQR += std::pow(yi - prediction[i].item<TensorDataType>(), 2.0);
-      SQT += std::pow(yi - y_cross, 2.0);
-    }
-
-    scores.push_back(1.0 - (SQR / SQT));
-  }
-
-  return scores;
 }
 
 std::vector<double> Logic::calculateR2ScoreAlternateDenormalized(DataVector const& testData)
@@ -656,37 +581,15 @@ void Logic::saveDiffToFile(DataVector const& data, std::string const& path, bool
 
     torch::Tensor difference;
     if (outputRelativeDiff) {
-      difference = calculateRelativeDiff(dOutputTensor, prediction);
+      difference = NetworkAnalyzer::calculateRelativeDiff(dOutputTensor, prediction);
     } else {
-      difference = calculateDiff(dOutputTensor, prediction);
+      difference = NetworkAnalyzer::calculateDiff(dOutputTensor, prediction);
     }
 
     diff[i++] = std::make_pair(dInputTensor, difference);
   }
 
   Utilities::FileParser::SaveData(diff, path, inputFileHeader);
-}
-
-torch::Tensor Logic::calculateDiff(torch::Tensor const& wantedValue, torch::Tensor const& actualValue) const
-{
-  auto output = wantedValue.clone();
-
-  for (int64_t i = 0; i < wantedValue.size(0); ++i) {
-    output[i] -= actualValue[i].item<TensorDataType>();
-  }
-
-  return output;
-}
-
-torch::Tensor Logic::calculateRelativeDiff(torch::Tensor const& wantedValue, torch::Tensor const& actualValue) const
-{
-  auto diff = calculateDiff(wantedValue, actualValue);
-
-  for (int64_t i = 0; i < wantedValue.size(0); ++i) {
-    diff[i] /= wantedValue[i].item<TensorDataType>();
-  }
-
-  return diff;
 }
 
 void Logic::saveMinMaxToFile() const
