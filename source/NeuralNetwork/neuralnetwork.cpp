@@ -3,7 +3,7 @@
 
 namespace NeuralNetwork {
 
-NetworkImpl::NetworkImpl(const uint32_t numberOfInputNodes, const uint32_t numberOfOutputNode, const std::vector<uint32_t>& hiddenLayers)
+NetworkImpl::NetworkImpl(uint32_t const numberOfInputNodes, uint32_t const numberOfOutputNode, std::vector<uint32_t> const& hiddenLayers)
 {
   if (hiddenLayers.empty()) {
     addLayer(0, numberOfInputNodes, numberOfOutputNode);
@@ -27,7 +27,7 @@ torch::Tensor NetworkImpl::forward(torch::Tensor x)
   return x;
 }
 
-void NetworkImpl::addLayer(const size_t layerNumber, const uint32_t numberOfInputNodes, const uint32_t numberOfOutputNodes)
+void NetworkImpl::addLayer(size_t const layerNumber, uint32_t const numberOfInputNodes, uint32_t const numberOfOutputNodes)
 {
   layers.emplace_back(register_module("layer" + std::to_string(layerNumber),
     torch::nn::Sequential(torch::nn::Linear(numberOfInputNodes, numberOfOutputNodes), torch::nn::Functional(torch::leaky_relu, 0.2))));

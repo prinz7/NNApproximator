@@ -1,11 +1,7 @@
 #include "NeuralNetwork/logic.h"
 #include "Utilities/optionparser.h"
-//#include "MachineLearningTest/torchtest.h"
 
 int main(int argc, char* argv[]) {
-//  TorchTest::TorchTest helper;
-//  helper.run();
-
   auto options = Utilities::OptionParser::ParseCommandLineParameters(argc, argv);
   if (options == std::nullopt) {
     return 1;

@@ -1,5 +1,5 @@
 #include "NeuralNetwork/logic.h"
-#include "Utilities/datanormalizator.h"
+#include "Utilities/dataprocessor.h"
 #include "Utilities/datasplitter.h"
 #include "Utilities/fileparser.h"
 
@@ -35,25 +35,25 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   if (options.LogScaling) {
     for (auto& [inputTensor, outputTensor] : *dataOpt) {
       (void) inputTensor;
-      Utilities::DataNormalizator::ScaleLogarithmic(outputTensor);
+      Utilities::DataProcessor::ScaleLogarithmic(outputTensor);
     }
   } else if (options.SqrtScaling) {
     for (auto& [inputTensor, outputTensor] : *dataOpt) {
       (void) inputTensor;
-      Utilities::DataNormalizator::ScaleSquareRoot(outputTensor);
+      Utilities::DataProcessor::ScaleSquareRoot(outputTensor);
     }
   } else if (options.LogLinScaling) {
     for (auto& [inputTensor, outputTensor] : *dataOpt) {
       if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= options.MixedScalingThreshold) {
-        Utilities::DataNormalizator::ScaleLogarithmic(outputTensor);
+        Utilities::DataProcessor::ScaleLogarithmic(outputTensor);
       }
     }
   } else if (options.LogSqrtScaling) {
     for (auto& [inputTensor, outputTensor] : *dataOpt) {
       if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= options.MixedScalingThreshold) {
-        Utilities::DataNormalizator::ScaleLogarithmic(outputTensor);
+        Utilities::DataProcessor::ScaleLogarithmic(outputTensor);
       } else {
-        Utilities::DataNormalizator::ScaleSquareRoot(outputTensor);
+        Utilities::DataProcessor::ScaleSquareRoot(outputTensor);
       }
     }
   }
@@ -65,15 +65,15 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   // Get min/max values
   if (options.InputMinMaxFilePath != Utilities::DefaultValues::INPUT_MIN_MAX_FILE_PATH) {
     if (useMixedScaling) {
-      auto minMaxFromFile = Utilities::DataNormalizator::GetMixedMinMaxFromFile(options.InputMinMaxFilePath,
-        options.NumberOfInputVariables, options.NumberOfOutputVariables);
+      auto minMaxFromFile = Utilities::DataProcessor::GetMixedMinMaxFromFile(options.InputMinMaxFilePath,
+                                                                             options.NumberOfInputVariables, options.NumberOfOutputVariables);
       if (!minMaxFromFile) {
         return false;
       }
       mixedScalingMinMax = *minMaxFromFile;
     } else {
-      auto minMaxFromFile = Utilities::DataNormalizator::GetMinMaxFromFile(options.InputMinMaxFilePath,
-        options.NumberOfInputVariables, options.NumberOfOutputVariables);
+      auto minMaxFromFile = Utilities::DataProcessor::GetMinMaxFromFile(options.InputMinMaxFilePath,
+                                                                        options.NumberOfInputVariables, options.NumberOfOutputVariables);
       if (!minMaxFromFile) {
         return false;
       }
@@ -81,9 +81,9 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     }
   } else {
     if (useMixedScaling) {
-      Utilities::DataNormalizator::CalculateMixedMinMax(*dataOpt, options.MixedScalingInputVariable, options.MixedScalingThreshold, mixedScalingMinMax);
+      Utilities::DataProcessor::CalculateMixedMinMax(*dataOpt, options.MixedScalingInputVariable, options.MixedScalingThreshold, mixedScalingMinMax);
     } else {
-      Utilities::DataNormalizator::CalculateMinMax(*dataOpt, minMax);
+      Utilities::DataProcessor::CalculateMinMax(*dataOpt, minMax);
     }
   }
 
@@ -95,14 +95,14 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   if (useMixedScaling) {
     for (auto& [inputTensor, outputTensor] : *dataOpt) {
       if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= options.MixedScalingThreshold) {
-        Utilities::DataNormalizator::Normalize(outputTensor, mixedScalingMinMax.first.second, -1.0, 0.0); // TODO check if overlap is a problem
+        Utilities::DataProcessor::Normalize(outputTensor, mixedScalingMinMax.first.second, -1.0, 0.0); // TODO check if overlap is a problem
       } else {
-        Utilities::DataNormalizator::Normalize(outputTensor, mixedScalingMinMax.second.second, 0.0, 1.0);
+        Utilities::DataProcessor::Normalize(outputTensor, mixedScalingMinMax.second.second, 0.0, 1.0);
       }
-      Utilities::DataNormalizator::Normalize(inputTensor, mixedScalingMinMax.first.first, 0.0, 1.0);
+      Utilities::DataProcessor::Normalize(inputTensor, mixedScalingMinMax.first.first, 0.0, 1.0);
     }
   } else {
-    Utilities::DataNormalizator::Normalize(*dataOpt, minMax, 0.0, 1.0);  // TODO let user control normalization
+    Utilities::DataProcessor::Normalize(*dataOpt, minMax, 0.0, 1.0);  // TODO let user control normalization
   }
 
   // Calculate denormalized mixed scaling threshold value:
@@ -110,7 +110,7 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     auto tempInputTensor = dataOpt->front().first.clone();
     tempInputTensor[options.MixedScalingInputVariable] = options.MixedScalingThreshold;
 
-    Utilities::DataNormalizator::Normalize(tempInputTensor, mixedScalingMinMax.first.first, 0.0, 1.0);
+    Utilities::DataProcessor::Normalize(tempInputTensor, mixedScalingMinMax.first.first, 0.0, 1.0);
     normalizedMixedScalingThreshold = tempInputTensor[options.MixedScalingInputVariable].item<TensorDataType>();
   }
 
@@ -339,27 +339,27 @@ void Logic::performInteractiveMode()
     }
 
     if (currentVariable >= options.NumberOfInputVariables) {
-      Utilities::DataNormalizator::Normalize(inTensor, (useMixedScaling) ? mixedScalingMinMax.first.first : inputMinMax, 0.0, 1.0);
+      Utilities::DataProcessor::Normalize(inTensor, (useMixedScaling) ? mixedScalingMinMax.first.first : inputMinMax, 0.0, 1.0);
       auto output = network->forward(inTensor);
       auto dOutputTensor = output.clone();
       denormalizeOutputTensor(inTensor, dOutputTensor, false);
 
       if (options.LogScaling) {
-        Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
+        Utilities::DataProcessor::UnscaleLogarithmic(dOutputTensor);
       }
       else if (options.SqrtScaling) {
-        Utilities::DataNormalizator::UnscaleSquareRoot(dOutputTensor);
+        Utilities::DataProcessor::UnscaleSquareRoot(dOutputTensor);
       }
       else if (options.LogLinScaling) {
         if (inTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-          Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
+          Utilities::DataProcessor::UnscaleLogarithmic(dOutputTensor);
         }
       }
       else if (options.LogSqrtScaling) {
         if (inTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-          Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
+          Utilities::DataProcessor::UnscaleLogarithmic(dOutputTensor);
         } else {
-          Utilities::DataNormalizator::UnscaleSquareRoot(dOutputTensor);
+          Utilities::DataProcessor::UnscaleSquareRoot(dOutputTensor);
         }
       }
 
@@ -472,18 +472,18 @@ std::vector<double> Logic::calculateR2ScoreAlternateDenormalized(DataVector cons
       denormalizeOutputTensor(x, yD, false);
 
       if (options.LogScaling) {
-        Utilities::DataNormalizator::UnscaleLogarithmic(yD);
+        Utilities::DataProcessor::UnscaleLogarithmic(yD);
       } else if (options.SqrtScaling) {
-        Utilities::DataNormalizator::UnscaleSquareRoot(yD);
+        Utilities::DataProcessor::UnscaleSquareRoot(yD);
       } else if (options.LogLinScaling) {
         if (x[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-          Utilities::DataNormalizator::UnscaleLogarithmic(yD);
+          Utilities::DataProcessor::UnscaleLogarithmic(yD);
         }
       } else if (options.LogSqrtScaling) {
         if (x[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-          Utilities::DataNormalizator::UnscaleLogarithmic(yD);
+          Utilities::DataProcessor::UnscaleLogarithmic(yD);
         } else {
-          Utilities::DataNormalizator::UnscaleSquareRoot(yD);
+          Utilities::DataProcessor::UnscaleSquareRoot(yD);
         }
       }
 
@@ -498,23 +498,23 @@ std::vector<double> Logic::calculateR2ScoreAlternateDenormalized(DataVector cons
       denormalizeOutputTensor(x, prediction, false);
 
       if (options.LogScaling) {
-        Utilities::DataNormalizator::UnscaleLogarithmic(yD);
-        Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
+        Utilities::DataProcessor::UnscaleLogarithmic(yD);
+        Utilities::DataProcessor::UnscaleLogarithmic(prediction);
       } else if (options.SqrtScaling) {
-        Utilities::DataNormalizator::UnscaleSquareRoot(yD);
-        Utilities::DataNormalizator::UnscaleSquareRoot(prediction);
+        Utilities::DataProcessor::UnscaleSquareRoot(yD);
+        Utilities::DataProcessor::UnscaleSquareRoot(prediction);
       } else if (options.LogLinScaling) {
         if (x[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-          Utilities::DataNormalizator::UnscaleLogarithmic(yD);
-          Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
+          Utilities::DataProcessor::UnscaleLogarithmic(yD);
+          Utilities::DataProcessor::UnscaleLogarithmic(prediction);
         }
       } else if (options.LogSqrtScaling) {
         if (x[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-          Utilities::DataNormalizator::UnscaleLogarithmic(yD);
-          Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
+          Utilities::DataProcessor::UnscaleLogarithmic(yD);
+          Utilities::DataProcessor::UnscaleLogarithmic(prediction);
         } else {
-          Utilities::DataNormalizator::UnscaleSquareRoot(yD);
-          Utilities::DataNormalizator::UnscaleSquareRoot(prediction);
+          Utilities::DataProcessor::UnscaleSquareRoot(yD);
+          Utilities::DataProcessor::UnscaleSquareRoot(prediction);
         }
       }
 
@@ -545,26 +545,26 @@ void Logic::outputBehaviour(DataVector const& data)
     denormalizeOutputTensor(inputTensor, dPrediction, false);
 
     if (options.LogScaling) {
-      Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
-      Utilities::DataNormalizator::UnscaleLogarithmic(dPrediction);
+      Utilities::DataProcessor::UnscaleLogarithmic(dOutputTensor);
+      Utilities::DataProcessor::UnscaleLogarithmic(dPrediction);
     }
     else if (options.SqrtScaling) {
-      Utilities::DataNormalizator::UnscaleSquareRoot(dOutputTensor);
-      Utilities::DataNormalizator::UnscaleSquareRoot(dPrediction);
+      Utilities::DataProcessor::UnscaleSquareRoot(dOutputTensor);
+      Utilities::DataProcessor::UnscaleSquareRoot(dPrediction);
     }
     else if (options.LogLinScaling) {
       if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-        Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
-        Utilities::DataNormalizator::UnscaleLogarithmic(dPrediction);
+        Utilities::DataProcessor::UnscaleLogarithmic(dOutputTensor);
+        Utilities::DataProcessor::UnscaleLogarithmic(dPrediction);
       }
     }
     else if (options.LogSqrtScaling) {
       if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-        Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
-        Utilities::DataNormalizator::UnscaleLogarithmic(dPrediction);
+        Utilities::DataProcessor::UnscaleLogarithmic(dOutputTensor);
+        Utilities::DataProcessor::UnscaleLogarithmic(dPrediction);
       } else {
-        Utilities::DataNormalizator::UnscaleSquareRoot(dOutputTensor);
-        Utilities::DataNormalizator::UnscaleSquareRoot(dPrediction);
+        Utilities::DataProcessor::UnscaleSquareRoot(dOutputTensor);
+        Utilities::DataProcessor::UnscaleSquareRoot(dPrediction);
       }
     }
 
@@ -592,21 +592,21 @@ void Logic::saveValuesToFile(DataVector const& data, std::string const& path)
     denormalizeOutputTensor(inputTensor, prediction, false);
 
     if (options.LogScaling) {
-      Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
+      Utilities::DataProcessor::UnscaleLogarithmic(prediction);
     }
     else if (options.SqrtScaling) {
-      Utilities::DataNormalizator::UnscaleSquareRoot(prediction);
+      Utilities::DataProcessor::UnscaleSquareRoot(prediction);
     }
     else if (options.LogLinScaling) {
       if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-        Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
+        Utilities::DataProcessor::UnscaleLogarithmic(prediction);
       }
     }
     else if (options.LogSqrtScaling) {
       if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-        Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
+        Utilities::DataProcessor::UnscaleLogarithmic(prediction);
       } else {
-        Utilities::DataNormalizator::UnscaleSquareRoot(prediction);
+        Utilities::DataProcessor::UnscaleSquareRoot(prediction);
       }
     }
 
@@ -631,26 +631,26 @@ void Logic::saveDiffToFile(DataVector const& data, std::string const& path, bool
     denormalizeOutputTensor(inputTensor, prediction, false);
 
     if (options.LogScaling) {
-      Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
-      Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
+      Utilities::DataProcessor::UnscaleLogarithmic(dOutputTensor);
+      Utilities::DataProcessor::UnscaleLogarithmic(prediction);
     }
     else if (options.SqrtScaling) {
-      Utilities::DataNormalizator::UnscaleSquareRoot(dOutputTensor);
-      Utilities::DataNormalizator::UnscaleSquareRoot(prediction);
+      Utilities::DataProcessor::UnscaleSquareRoot(dOutputTensor);
+      Utilities::DataProcessor::UnscaleSquareRoot(prediction);
     }
     else if (options.LogLinScaling) {
       if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-        Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
-        Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
+        Utilities::DataProcessor::UnscaleLogarithmic(dOutputTensor);
+        Utilities::DataProcessor::UnscaleLogarithmic(prediction);
       }
     }
     else if (options.LogSqrtScaling) {
       if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-        Utilities::DataNormalizator::UnscaleLogarithmic(dOutputTensor);
-        Utilities::DataNormalizator::UnscaleLogarithmic(prediction);
+        Utilities::DataProcessor::UnscaleLogarithmic(dOutputTensor);
+        Utilities::DataProcessor::UnscaleLogarithmic(prediction);
       } else {
-        Utilities::DataNormalizator::UnscaleSquareRoot(dOutputTensor);
-        Utilities::DataNormalizator::UnscaleSquareRoot(prediction);
+        Utilities::DataProcessor::UnscaleSquareRoot(dOutputTensor);
+        Utilities::DataProcessor::UnscaleSquareRoot(prediction);
       }
     }
 
@@ -731,19 +731,19 @@ void Logic::saveMinMaxToFile() const
 
 inline void Logic::denormalizeInputTensor(torch::Tensor& tensor, bool limitValues)
 {
-  Utilities::DataNormalizator::Denormalize(tensor, (useMixedScaling) ? mixedScalingMinMax.first.first : inputMinMax, 0.0, 1.0, limitValues);
+  Utilities::DataProcessor::Denormalize(tensor, (useMixedScaling) ? mixedScalingMinMax.first.first : inputMinMax, 0.0, 1.0, limitValues);
 }
 
 inline void Logic::denormalizeOutputTensor(torch::Tensor const& inputTensor, torch::Tensor& outputTensor, bool limitValues)
 {
   if (useMixedScaling) {
     if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-      Utilities::DataNormalizator::Denormalize(outputTensor, mixedScalingMinMax.first.second, -1.0, 0.0, limitValues);
+      Utilities::DataProcessor::Denormalize(outputTensor, mixedScalingMinMax.first.second, -1.0, 0.0, limitValues);
     } else {
-      Utilities::DataNormalizator::Denormalize(outputTensor, mixedScalingMinMax.second.second, 0.0, 1.0, limitValues);
+      Utilities::DataProcessor::Denormalize(outputTensor, mixedScalingMinMax.second.second, 0.0, 1.0, limitValues);
     }
   } else {
-    Utilities::DataNormalizator::Denormalize(outputTensor, outputMinMax, 0.0, 1.0, limitValues);
+    Utilities::DataProcessor::Denormalize(outputTensor, outputMinMax, 0.0, 1.0, limitValues);
   }
 }
 

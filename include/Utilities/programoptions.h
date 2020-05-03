@@ -79,7 +79,7 @@ const std::string CLI_HELP_TEXT = {
   "--layers X                         : Sets the number of layers of the NN to X. Default: " + std::to_string(NUMBER_OF_LAYERS) + "\n" +
   "--nodes X                          : Sets the number of nodes per layer of the NN to X. Default: " + std::to_string(NUMBER_OF_NODES_PER_LAYER) + "\n" +
   "--batchVariable X                  : If set, concatenates training data around input variable X [1, ..] to batches.\n" +
-  "--debugOutput                       : If set, some debug information gets outputted to the console.\n"
+  "--debugOutput                      : If set, some debug information gets outputted to the console.\n"
 };
 
 }

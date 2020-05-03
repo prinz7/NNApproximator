@@ -1,4 +1,4 @@
-#include "Utilities/datanormalizator.h"
+#include "Utilities/dataprocessor.h"
 #include "Utilities/datasplitter.h"
 #include "Utilities/fileparser.h"
 
@@ -10,7 +10,7 @@ const TensorDataType MINIMUM_ALLOWED_VALUE = 1e-30;
 
 }
 
-void DataNormalizator::CalculateMinMax(DataVector const& data, MinMaxValues& minMaxVectors)
+void DataProcessor::CalculateMinMax(DataVector const& data, MinMaxValues& minMaxVectors)
 {
   if (data.empty()) return;
   auto& inputMinMax = minMaxVectors.first;
@@ -36,7 +36,7 @@ void DataNormalizator::CalculateMinMax(DataVector const& data, MinMaxValues& min
   }
 }
 
-void DataNormalizator::CalculateMixedMinMax(DataVector const& data, uint32_t thresholdVariable, TensorDataType threshold, MixedMinMaxValues& mixedMinMaxValues)
+void DataProcessor::CalculateMixedMinMax(DataVector const& data, uint32_t thresholdVariable, TensorDataType threshold, MixedMinMaxValues& mixedMinMaxValues)
 {
   mixedMinMaxValues = std::make_pair(MinMaxValues(), MinMaxValues());
 
@@ -53,7 +53,7 @@ void DataNormalizator::CalculateMixedMinMax(DataVector const& data, uint32_t thr
   mixedMinMaxValues.second.first = globalMinMax.first;
 }
 
-std::optional<MinMaxValues> DataNormalizator::GetMinMaxFromFile(FilePath const& filePath, uint32_t numberOfInputVariables, uint32_t numberOfOutputVariables)
+std::optional<MinMaxValues> DataProcessor::GetMinMaxFromFile(FilePath const& filePath, uint32_t numberOfInputVariables, uint32_t numberOfOutputVariables)
 {
   std::string fileHeader{};
   auto minMaxOpt = Utilities::FileParser::ParseInputFile(filePath, numberOfInputVariables, numberOfOutputVariables, fileHeader);
@@ -87,7 +87,7 @@ std::optional<MinMaxValues> DataNormalizator::GetMinMaxFromFile(FilePath const& 
   return std::make_optional(minMaxValues);
 }
 
-std::optional<MixedMinMaxValues> DataNormalizator::GetMixedMinMaxFromFile(FilePath const& filePath, uint32_t numberOfInputVariables, uint32_t numberOfOutputVariables)
+std::optional<MixedMinMaxValues> DataProcessor::GetMixedMinMaxFromFile(FilePath const& filePath, uint32_t numberOfInputVariables, uint32_t numberOfOutputVariables)
 {
   std::string fileHeader{};
   auto minMaxOpt = Utilities::FileParser::ParseInputFile(filePath, numberOfInputVariables, numberOfOutputVariables, fileHeader);
@@ -131,7 +131,7 @@ std::optional<MixedMinMaxValues> DataNormalizator::GetMixedMinMaxFromFile(FilePa
   return std::make_optional(std::make_pair(minMaxValues1, minMaxValues2));
 }
 
-void DataNormalizator::Normalize(DataVector& data, std::pair<MinMaxVector const, MinMaxVector const> const& minMaxVectors, TensorDataType const newMinValue, TensorDataType const newMaxValue)
+void DataProcessor::Normalize(DataVector& data, std::pair<MinMaxVector const, MinMaxVector const> const& minMaxVectors, TensorDataType const newMinValue, TensorDataType const newMaxValue)
 {
   auto const& inputMinMax = minMaxVectors.first;
   auto const& outputMinMax = minMaxVectors.second;
@@ -142,7 +142,7 @@ void DataNormalizator::Normalize(DataVector& data, std::pair<MinMaxVector const,
   }
 }
 
-void DataNormalizator::Normalize(torch::Tensor& tensor, MinMaxVector const& minMaxVector, TensorDataType const newMinValue, TensorDataType const newMaxValue)
+void DataProcessor::Normalize(torch::Tensor& tensor, MinMaxVector const& minMaxVector, TensorDataType const newMinValue, TensorDataType const newMaxValue)
 {
   // Normalize data -- use '(X - min) / (max - min)' to get values between 0 and 1:
   for (int64_t i = 0; i < tensor.size(0); ++i) {
@@ -151,7 +151,7 @@ void DataNormalizator::Normalize(torch::Tensor& tensor, MinMaxVector const& minM
   }
 }
 
-void DataNormalizator::Denormalize(torch::Tensor& tensor, MinMaxVector const& minMaxVector, TensorDataType const oldMinValue, TensorDataType const oldMaxValue, bool const limitValues)
+void DataProcessor::Denormalize(torch::Tensor& tensor, MinMaxVector const& minMaxVector, TensorDataType const oldMinValue, TensorDataType const oldMaxValue, bool const limitValues)
 {
   if (tensor.size(0) != static_cast<int64_t>(minMaxVector.size())) {
     return;
@@ -166,7 +166,7 @@ void DataNormalizator::Denormalize(torch::Tensor& tensor, MinMaxVector const& mi
   }
 }
 
-void DataNormalizator::ScaleLogarithmic(torch::Tensor& data)
+void DataProcessor::ScaleLogarithmic(torch::Tensor& data)
 {
   for (int64_t i = 0; i < data.size(0); ++i) {
     if (data[i].item<TensorDataType>() < MINIMUM_ALLOWED_VALUE) {
@@ -176,14 +176,14 @@ void DataNormalizator::ScaleLogarithmic(torch::Tensor& data)
   }
 }
 
-void DataNormalizator::UnscaleLogarithmic(torch::Tensor& data)
+void DataProcessor::UnscaleLogarithmic(torch::Tensor& data)
 {
   for (int64_t i = 0; i < data.size(0); ++i) {
     data[i] = std::exp(data[i].item<TensorDataType>());
   }
 }
 
-void DataNormalizator::ScaleSquareRoot(torch::Tensor& data)
+void DataProcessor::ScaleSquareRoot(torch::Tensor& data)
 {
   for (int64_t i = 0; i < data.size(0); ++i) {
     if (data[i].item<TensorDataType>() < MINIMUM_ALLOWED_VALUE) {
@@ -193,7 +193,7 @@ void DataNormalizator::ScaleSquareRoot(torch::Tensor& data)
   }
 }
 
-void DataNormalizator::UnscaleSquareRoot(torch::Tensor& data)
+void DataProcessor::UnscaleSquareRoot(torch::Tensor& data)
 {
   for (int64_t i = 0; i < data.size(0); ++i) {
     data[i] = std::pow(data[i].item<TensorDataType>(), 2.0);

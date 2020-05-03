@@ -7,7 +7,7 @@ namespace NeuralNetwork {
 class NetworkImpl : public torch::nn::Module
 {
 public:
-  NetworkImpl(uint32_t numberOfInputNodes, uint32_t numberOfOutputNode, const std::vector<uint32_t>& hiddenLayers);
+  NetworkImpl(uint32_t numberOfInputNodes, uint32_t numberOfOutputNode, std::vector<uint32_t> const& hiddenLayers);
 
 public:
   torch::Tensor forward(torch::Tensor x);

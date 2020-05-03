@@ -1,6 +1,6 @@
 target_sources(NNApproximator
     PRIVATE
-        datanormalizator.cpp
+        dataprocessor.cpp
         datasplitter.cpp
         fileparser.cpp
         optionparser.cpp

@@ -4,7 +4,7 @@
 
 namespace Utilities {
 
-class DataNormalizator
+class DataProcessor
 {
 public:
   static void CalculateMinMax(DataVector const& data, MinMaxValues& minMaxVectors);
