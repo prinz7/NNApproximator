@@ -1,5 +1,5 @@
 # NNApproximator
-Project to test approximation of an unkown function with a neural network.
+Project to test the approximation of an unknown function with a neural network.
 
 To get the needed library files via git, you need to activate Git LFS in your cloned repository.
 ```
@@ -18,7 +18,7 @@ mkdir build
 cd build
 ```
 
-Call CMake to create the make files. You need at least CMake version 3.13:
+Call CMake to create the make files. You need at least CMake version 3.13 for this to work:
 ```
 cmake ..
 ```
