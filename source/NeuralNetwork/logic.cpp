@@ -114,6 +114,11 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     normalizedMixedScalingThreshold = tempInputTensor[options.MixedScalingInputVariable].item<TensorDataType>();
   }
 
+  auto tempOutputTensor = dataOpt->front().second.clone();
+  tempOutputTensor[0] = THRESHOLD_CURRENT;
+  Utilities::DataProcessor::Normalize(tempOutputTensor, minMax.second, 0.0, 1.0);
+  normalizedThresholdCurrent = tempOutputTensor[0].item<TensorDataType>();
+
   if (options.OutputMinMaxFilePath != Utilities::DefaultValues::OUTPUT_MIN_MAX_FILE_PATH) {
     saveMinMaxToFile();
   }
@@ -285,16 +290,32 @@ void Logic::trainNetwork(DataVector const& data)
       for (auto const& [identifier, batch] : batchedTrainingData) {
         (void) identifier;
 
-        optimizer.zero_grad();
+        while(true) {
+          optimizer.zero_grad();
 
-        for (auto const& [x, y] : batch) {
-          auto prediction = network->forward(x);
-          auto loss = torch::mse_loss(prediction, y);
+          // custom loss:
+          std::vector<torch::Tensor> predictions{};
+          for (auto const&[x, y] : batch) {
+            auto prediction = network->forward(x);
+            auto loss = torch::mse_loss(prediction, y);
 
+            loss.backward({},true);
+            predictions.push_back(prediction);
+          }
+          auto loss = NetworkAnalyzer::calculateCustomBatchLoss(batch, predictions, normalizedThresholdCurrent);
+          std::cout << "Loss: " << loss << std::endl;
           loss.backward();
-        }
 
-        optimizer.step();
+          // sum mse:
+//        for (auto const& [x, y] : batch) {
+//          auto prediction = network->forward(x);
+//          auto loss = torch::mse_loss(prediction, y);
+//
+//          loss.backward();
+//        }
+
+          optimizer.step();
+        }
       }
     } else {
       for (auto const& [x, y] : data) {

@@ -7,9 +7,13 @@
 
 class LearnProgressDataSet;
 
-// Type definitions & constants:
+// constants:
 
 const uint32_t MaxNumberOfNodes = 10000;
+const double THRESHOLD_CURRENT = 460e-9; // TODO: set via command line parameter
+const int64_t BATCH_VGS_INDEX = 2; // TODO: set via command line parameter
+
+// Type definitions:
 
 using TensorDataType = double;
 const torch::ScalarType TORCH_DATA_TYPE = torch::kDouble;

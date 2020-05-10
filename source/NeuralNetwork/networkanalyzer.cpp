@@ -103,4 +103,71 @@ namespace NeuralNetwork {
 
     return diff;
   }
+
+  torch::Tensor NetworkAnalyzer::calculateCustomBatchLoss(DataVector const& trainedBatch, std::vector<torch::Tensor> const& predictions, TensorDataType const normalizedThresholdCurrent)
+  {
+    auto thresholdIndex = getThresholdVoltageIndex(trainedBatch, normalizedThresholdCurrent);
+
+    // calculate mse for whole batch:
+//    std::vector<torch::Tensor> errors{};
+//    for (size_t i = 0; i < trainedBatch.size(); ++i) {
+//      auto diff = predictions[i].clone();
+//      diff = diff.mul(-1.0);
+//      diff = diff.add(trainedBatch[i].second);
+//      diff = diff.pow(2.0);
+//      errors.push_back(diff);
+//    }
+//    auto mse = torch::mean(torch::cat(errors));
+//    mse = mse.mul(10.0);
+
+    // Ioff (relative error):
+    auto ioff = predictions[0].clone();
+    ioff = ioff.div(trainedBatch[0].second);
+    ioff = ioff.add(-1.0);
+    ioff = ioff.abs();
+
+    // Ion (relative error):
+    auto ion = predictions[predictions.size() - 1].clone();
+    ion = ion.div(trainedBatch[predictions.size() - 1].second);
+    ion = ion.add(-1.0);
+    ion = ion.abs();
+
+    // Vt (relative error):
+    auto vt = predictions[thresholdIndex].clone();
+    vt = vt.div(trainedBatch[thresholdIndex].second);
+    vt = vt.add(-1.0);
+    vt = vt.abs();
+
+    // X -- slope between Ioff and Vt (relative error):
+    auto thresholdVoltage = trainedBatch[thresholdIndex].first[BATCH_VGS_INDEX].item<TensorDataType>();
+    auto x_spice = trainedBatch[thresholdIndex].second.add(trainedBatch[0].second.mul(-1.0)).div(thresholdVoltage);
+    auto x_nn = predictions[thresholdIndex].add(predictions[0].mul(-1.0)).div(thresholdVoltage);
+    auto x = x_nn.div(x_spice);
+    x = x.add(-1.0);
+    x = x.abs();
+
+    auto loss = ioff.add(vt);
+//    auto loss = mse.add(ioff.add(ion));
+//    if (thresholdVoltage > 0) {
+//      loss = loss.add(vt.add(x));
+//    }
+    loss = loss.div(5.0);
+
+    std::cout << "mse: " << " ioff: " << ioff << " ion: " << ion << " vt: " << vt << " x: " << x << " loss: " << loss << std::endl;
+
+    return loss;
+  }
+
+  size_t NetworkAnalyzer::getThresholdVoltageIndex(DataVector const& trainedBatch, TensorDataType const normalizedThresholdCurrent)
+  {
+    size_t thresholdIndex = 0;
+
+    for (size_t i = 1; i < trainedBatch.size(); ++i) {
+      if (std::abs(trainedBatch[i].second.item<TensorDataType>() - normalizedThresholdCurrent) < std::abs(trainedBatch[thresholdIndex].second.item<TensorDataType>() - normalizedThresholdCurrent)) {
+        thresholdIndex = i;
+      }
+    }
+
+    return thresholdIndex;
+  }
 }

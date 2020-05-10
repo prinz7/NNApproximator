@@ -45,6 +45,7 @@ private:
 
   bool useBatchTraining = false;
   BatchMap batchedTrainingData = BatchMap();
+  TensorDataType normalizedThresholdCurrent = 0;
 };
 
 }

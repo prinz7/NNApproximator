@@ -23,6 +23,12 @@ namespace NeuralNetwork {
     static torch::Tensor calculateDiff(torch::Tensor const& wantedValue, torch::Tensor const& actualValue);
     [[nodiscard]]
     static torch::Tensor calculateRelativeDiff(torch::Tensor const& wantedValue, torch::Tensor const& actualValue);
+    [[nodiscard]]
+    static torch::Tensor calculateCustomBatchLoss(DataVector const& trainedBatch, std::vector<torch::Tensor> const& predictions, TensorDataType normalizedThresholdCurrent);
+
+  private:
+    [[nodiscard]]
+    static size_t getThresholdVoltageIndex(DataVector const& trainedBatch, TensorDataType normalizedThresholdCurrent);
 
   private:
     Network& network;
