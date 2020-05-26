@@ -24,6 +24,7 @@ private:
   void saveMinMaxToFile() const;
   void denormalizeInputTensor(torch::Tensor& tensor, bool limitValues = false);
   void denormalizeOutputTensor(torch::Tensor const& inputTensor, torch::Tensor& outputTensor, bool limitValues = false);
+  void unscaleOutputTensor(torch::Tensor const& inputTensor, torch::Tensor& outputTensor);
 
 private:
   Network network {nullptr};

@@ -301,8 +301,6 @@ void Logic::trainNetwork(DataVector const& data)
         auto prediction = network->forward(x);
 
         auto loss = torch::mse_loss(prediction, y);
-//      auto loss = torch::kl_div(prediction, y);
-//      auto loss = torch::nll_loss(prediction, y);
 
         optimizer.zero_grad();
 
@@ -312,7 +310,7 @@ void Logic::trainNetwork(DataVector const& data)
     }
   }
 
-  if (options.PrintBehaviour) {
+  if (options.DebugOutput) {
     std::cout << "\nTraining duration: " << formatDuration<std::chrono::milliseconds, std::chrono::hours, std::chrono::minutes, std::chrono::seconds>
       (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start)) << std::endl;
   }
@@ -345,24 +343,7 @@ void Logic::performInteractiveMode()
       auto dOutputTensor = output.clone();
       denormalizeOutputTensor(inTensor, dOutputTensor, false);
 
-      if (options.LogScaling) {
-        Utilities::DataProcessor::UnscaleLogarithmic(dOutputTensor);
-      }
-      else if (options.SqrtScaling) {
-        Utilities::DataProcessor::UnscaleSquareRoot(dOutputTensor);
-      }
-      else if (options.LogLinScaling) {
-        if (inTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-          Utilities::DataProcessor::UnscaleLogarithmic(dOutputTensor);
-        }
-      }
-      else if (options.LogSqrtScaling) {
-        if (inTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-          Utilities::DataProcessor::UnscaleLogarithmic(dOutputTensor);
-        } else {
-          Utilities::DataProcessor::UnscaleSquareRoot(dOutputTensor);
-        }
-      }
+      unscaleOutputTensor(inTensor, dOutputTensor);
 
       std::cout << "Normalized input: ";
       for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) {
@@ -396,21 +377,7 @@ std::vector<double> Logic::calculateR2ScoreAlternateDenormalized(DataVector cons
       auto yD = y.clone();
       denormalizeOutputTensor(x, yD, false);
 
-      if (options.LogScaling) {
-        Utilities::DataProcessor::UnscaleLogarithmic(yD);
-      } else if (options.SqrtScaling) {
-        Utilities::DataProcessor::UnscaleSquareRoot(yD);
-      } else if (options.LogLinScaling) {
-        if (x[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-          Utilities::DataProcessor::UnscaleLogarithmic(yD);
-        }
-      } else if (options.LogSqrtScaling) {
-        if (x[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-          Utilities::DataProcessor::UnscaleLogarithmic(yD);
-        } else {
-          Utilities::DataProcessor::UnscaleSquareRoot(yD);
-        }
-      }
+      unscaleOutputTensor(x, yD);
 
       y_cross += yD[i].item<TensorDataType>();
     }
@@ -422,26 +389,8 @@ std::vector<double> Logic::calculateR2ScoreAlternateDenormalized(DataVector cons
       denormalizeOutputTensor(x, yD, false);
       denormalizeOutputTensor(x, prediction, false);
 
-      if (options.LogScaling) {
-        Utilities::DataProcessor::UnscaleLogarithmic(yD);
-        Utilities::DataProcessor::UnscaleLogarithmic(prediction);
-      } else if (options.SqrtScaling) {
-        Utilities::DataProcessor::UnscaleSquareRoot(yD);
-        Utilities::DataProcessor::UnscaleSquareRoot(prediction);
-      } else if (options.LogLinScaling) {
-        if (x[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-          Utilities::DataProcessor::UnscaleLogarithmic(yD);
-          Utilities::DataProcessor::UnscaleLogarithmic(prediction);
-        }
-      } else if (options.LogSqrtScaling) {
-        if (x[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-          Utilities::DataProcessor::UnscaleLogarithmic(yD);
-          Utilities::DataProcessor::UnscaleLogarithmic(prediction);
-        } else {
-          Utilities::DataProcessor::UnscaleSquareRoot(yD);
-          Utilities::DataProcessor::UnscaleSquareRoot(prediction);
-        }
-      }
+      unscaleOutputTensor(x, yD);
+      unscaleOutputTensor(x, prediction);
 
       TensorDataType yi = yD[i].item<TensorDataType>();
 
@@ -469,29 +418,8 @@ void Logic::outputBehaviour(DataVector const& data)
     denormalizeOutputTensor(inputTensor, dOutputTensor, false);
     denormalizeOutputTensor(inputTensor, dPrediction, false);
 
-    if (options.LogScaling) {
-      Utilities::DataProcessor::UnscaleLogarithmic(dOutputTensor);
-      Utilities::DataProcessor::UnscaleLogarithmic(dPrediction);
-    }
-    else if (options.SqrtScaling) {
-      Utilities::DataProcessor::UnscaleSquareRoot(dOutputTensor);
-      Utilities::DataProcessor::UnscaleSquareRoot(dPrediction);
-    }
-    else if (options.LogLinScaling) {
-      if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-        Utilities::DataProcessor::UnscaleLogarithmic(dOutputTensor);
-        Utilities::DataProcessor::UnscaleLogarithmic(dPrediction);
-      }
-    }
-    else if (options.LogSqrtScaling) {
-      if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-        Utilities::DataProcessor::UnscaleLogarithmic(dOutputTensor);
-        Utilities::DataProcessor::UnscaleLogarithmic(dPrediction);
-      } else {
-        Utilities::DataProcessor::UnscaleSquareRoot(dOutputTensor);
-        Utilities::DataProcessor::UnscaleSquareRoot(dPrediction);
-      }
-    }
+    unscaleOutputTensor(inputTensor, dOutputTensor);
+    unscaleOutputTensor(inputTensor, dPrediction);
 
     std::cout << "\nx: ";
     for (uint32_t i = 0; i < options.NumberOfInputVariables; ++i) std::cout << inputTensor[i].item<TensorDataType>() << " (" << dInputTensor[i].item<TensorDataType>() << ") ";
@@ -516,24 +444,7 @@ void Logic::saveValuesToFile(DataVector const& data, std::string const& path)
     denormalizeInputTensor(dInputTensor, false);
     denormalizeOutputTensor(inputTensor, prediction, false);
 
-    if (options.LogScaling) {
-      Utilities::DataProcessor::UnscaleLogarithmic(prediction);
-    }
-    else if (options.SqrtScaling) {
-      Utilities::DataProcessor::UnscaleSquareRoot(prediction);
-    }
-    else if (options.LogLinScaling) {
-      if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-        Utilities::DataProcessor::UnscaleLogarithmic(prediction);
-      }
-    }
-    else if (options.LogSqrtScaling) {
-      if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-        Utilities::DataProcessor::UnscaleLogarithmic(prediction);
-      } else {
-        Utilities::DataProcessor::UnscaleSquareRoot(prediction);
-      }
-    }
+    unscaleOutputTensor(inputTensor, prediction);
 
     values[i++] = std::make_pair(dInputTensor, prediction);
   }
@@ -555,29 +466,8 @@ void Logic::saveDiffToFile(DataVector const& data, std::string const& path, bool
     denormalizeOutputTensor(inputTensor, dOutputTensor, false);
     denormalizeOutputTensor(inputTensor, prediction, false);
 
-    if (options.LogScaling) {
-      Utilities::DataProcessor::UnscaleLogarithmic(dOutputTensor);
-      Utilities::DataProcessor::UnscaleLogarithmic(prediction);
-    }
-    else if (options.SqrtScaling) {
-      Utilities::DataProcessor::UnscaleSquareRoot(dOutputTensor);
-      Utilities::DataProcessor::UnscaleSquareRoot(prediction);
-    }
-    else if (options.LogLinScaling) {
-      if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-        Utilities::DataProcessor::UnscaleLogarithmic(dOutputTensor);
-        Utilities::DataProcessor::UnscaleLogarithmic(prediction);
-      }
-    }
-    else if (options.LogSqrtScaling) {
-      if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
-        Utilities::DataProcessor::UnscaleLogarithmic(dOutputTensor);
-        Utilities::DataProcessor::UnscaleLogarithmic(prediction);
-      } else {
-        Utilities::DataProcessor::UnscaleSquareRoot(dOutputTensor);
-        Utilities::DataProcessor::UnscaleSquareRoot(prediction);
-      }
-    }
+    unscaleOutputTensor(inputTensor, dOutputTensor);
+    unscaleOutputTensor(inputTensor, prediction);
 
     torch::Tensor difference;
     if (outputRelativeDiff) {
@@ -647,6 +537,28 @@ inline void Logic::denormalizeOutputTensor(torch::Tensor const& inputTensor, tor
     }
   } else {
     Utilities::DataProcessor::Denormalize(outputTensor, outputMinMax, 0.0, 1.0, limitValues);
+  }
+}
+
+void Logic::unscaleOutputTensor(torch::Tensor const& inputTensor, torch::Tensor& outputTensor)
+{
+  if (options.LogScaling) {
+    Utilities::DataProcessor::UnscaleLogarithmic(outputTensor);
+  }
+  else if (options.SqrtScaling) {
+    Utilities::DataProcessor::UnscaleSquareRoot(outputTensor);
+  }
+  else if (options.LogLinScaling) {
+    if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
+      Utilities::DataProcessor::UnscaleLogarithmic(outputTensor);
+    }
+  }
+  else if (options.LogSqrtScaling) {
+    if (inputTensor[options.MixedScalingInputVariable].item<TensorDataType>() <= normalizedMixedScalingThreshold) {
+      Utilities::DataProcessor::UnscaleLogarithmic(outputTensor);
+    } else {
+      Utilities::DataProcessor::UnscaleSquareRoot(outputTensor);
+    }
   }
 }
 
