@@ -128,7 +128,11 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   }
 
   network = Network{options.NumberOfInputVariables, options.NumberOfOutputVariables, networkConfiguration};
-  analyzer = std::make_unique<NetworkAnalyzer>(network);
+  analyzer = std::make_unique<NetworkAnalyzer>(network, [this](auto inTensor, auto outTensor, auto limitValues) {
+    denormalizeOutputTensor(inTensor, outTensor, limitValues);
+  }, [this](auto inTensor, auto outTensor) {
+    unscaleOutputTensor(inTensor, outTensor);
+  });
 
   if (options.InputNetworkParameters != Utilities::DefaultValues::INPUT_NETWORK_PARAMETERS) {
     torch::load(network, options.InputNetworkParameters);
@@ -190,14 +194,14 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     if (options.ValidateAfterTraining) {
       std::cout << "R2 score (training): " << analyzer->calculateR2Score(data.first) << std::endl;
       std::cout << "R2 score alternate (training): " << analyzer->calculateR2ScoreAlternate(data.first) << std::endl;
-      std::cout << "R2 score alternate denormalized (training): " << calculateR2ScoreAlternateDenormalized(data.first) << std::endl;
+      std::cout << "R2 score alternate denormalized (training): " << analyzer->calculateR2ScoreAlternateDenormalized(data.first) << std::endl;
       std::cout << "R2 score (validation): " << analyzer->calculateR2Score(data.second) << std::endl;
       std::cout << "R2 score alternate (validation): " << analyzer->calculateR2ScoreAlternate(data.second) << std::endl;
-      std::cout << "R2 score alternate denormalized (validation): " << calculateR2ScoreAlternateDenormalized(data.second) << std::endl;
+      std::cout << "R2 score alternate denormalized (validation): " << analyzer->calculateR2ScoreAlternateDenormalized(data.second) << std::endl;
     }
     std::cout << "R2 score (all): " << analyzer->calculateR2Score(*dataOpt) << std::endl;
     std::cout << "R2 score alternate (all): " << analyzer->calculateR2ScoreAlternate(*dataOpt) << std::endl;
-    std::cout << "R2 score alternate denormalized (all): " << calculateR2ScoreAlternateDenormalized(*dataOpt) << std::endl;
+    std::cout << "R2 score alternate denormalized (all): " << analyzer->calculateR2ScoreAlternateDenormalized(*dataOpt) << std::endl;
 
     if (options.ValidateAfterTraining) {
       std::cout << "\nTraining set:" << std::endl;
@@ -358,50 +362,6 @@ void Logic::performInteractiveMode()
       currentVariable = 0;
     }
   }
-}
-
-std::vector<double> Logic::calculateR2ScoreAlternateDenormalized(DataVector const& testData)
-{
-  if (testData.empty()) {
-    return std::vector<double>();
-  }
-
-  std::vector<double> scores{};
-
-  for (int64_t i = 0; i < testData[0].second.size(0); ++i) {
-    double SQR = 0.0;
-    double SQT = 0.0;
-
-    TensorDataType y_cross = 0.0;
-    for (auto const&[x, y] : testData) {
-      auto yD = y.clone();
-      denormalizeOutputTensor(x, yD, false);
-
-      unscaleOutputTensor(x, yD);
-
-      y_cross += yD[i].item<TensorDataType>();
-    }
-    y_cross /= testData.size();
-
-    for (auto const&[x, y] : testData) {
-      auto prediction = network->forward(x);
-      auto yD = y.clone();
-      denormalizeOutputTensor(x, yD, false);
-      denormalizeOutputTensor(x, prediction, false);
-
-      unscaleOutputTensor(x, yD);
-      unscaleOutputTensor(x, prediction);
-
-      TensorDataType yi = yD[i].item<TensorDataType>();
-
-      SQR += std::pow(yi - prediction[i].item<TensorDataType>(), 2.0);
-      SQT += std::pow(yi - y_cross, 2.0);
-    }
-
-    scores.push_back(1.0 - (SQR / SQT));
-  }
-
-  return scores;
 }
 
 void Logic::outputBehaviour(DataVector const& data)

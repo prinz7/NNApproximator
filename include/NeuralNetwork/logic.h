@@ -16,8 +16,6 @@ public:
 private:
   void trainNetwork(DataVector const& data);
   void performInteractiveMode();
-  [[nodiscard]]
-  std::vector<double> calculateR2ScoreAlternateDenormalized(DataVector const& testData);
   void outputBehaviour(DataVector const& data);
   void saveValuesToFile(DataVector const& data, std::string const& outputPath);
   void saveDiffToFile(DataVector const& data, std::string const& outputPath, bool outputRelativeDifference);
