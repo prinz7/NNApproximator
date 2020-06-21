@@ -23,6 +23,10 @@ jobs:
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
+      
+    - name: Pull library files from git LFS
+      run:
+        git lfs pull
 
     - name: Build CMake
       uses: ashutoshvarma/action-cmake-build@v1
@@ -31,3 +35,4 @@ jobs:
         build-dir: ${{ runner.workspace }}/build
         # CMake build type (Release, Debug, MinSizeRel, RelWithDebInfo)
         build-type: Release
+        parallel: 8
