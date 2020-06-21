@@ -1,3 +1,5 @@
+[![Actions Status](https://github.com/prinz7/NNApproximator/workflows/Build/badge.svg)](https://github.com/prinz7/NNApproximator/actions)
+
 # NNApproximator
 Project to test the approximation of an unknown function with a neural network.
 
