@@ -1,3 +1,0 @@
-libs/libtorch/lib/libtorch.so filter=lfs diff=lfs merge=lfs -text
-
-libs/* linguist-vendored
