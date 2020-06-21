@@ -40,6 +40,12 @@ public:
 
 // Helper functions:
 
+/*
+ * This function formats time durations.
+ *
+ * If you have the duration 'd' in milliseconds and you want the output to be like "<minutes>:<seconds>", use the function as follows:
+ * formatDuration<std::chrono::milliseconds, std::chrono::minutes, std::chrono::seconds>(d)
+ */
 template<class DurationIn, class FirstDuration, class...RestDurations>
 static std::string formatDuration(DurationIn d)
 {
