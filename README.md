@@ -3,15 +3,7 @@
 # NNApproximator
 Project to test the approximation of an unknown function with a neural network.
 
-To get the needed library files via git, you need to activate Git LFS in your cloned repository.
-```
-git lfs install
-```
-
-Then pull the library files:
-```
-git lfs pull
-```
+To get the needed library files, run getLibTorch.sh in the libs/ folder.
 
 #### Build project manually in terminal:
 In the cloned folder create a folder named 'build' and enter it:
