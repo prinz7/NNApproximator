@@ -20,13 +20,13 @@ jobs:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
       
-    - name: Download and unzip Libtorch
+    - name: Download and unzip LibTorch
       run: |
         cd libs/
         ./getLibTorch.sh
         cd ..
 
-    - name: Build CMake
+    - name: Build with CMake
       uses: ashutoshvarma/action-cmake-build@v1
       with:
         # Build directory where build files will be generated

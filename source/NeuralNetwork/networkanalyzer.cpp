@@ -95,7 +95,7 @@ namespace NeuralNetwork {
       double SQT = 0.0;
 
       TensorDataType y_cross = 0.0;
-      for (auto const&[x, y] : testData) {
+      for (auto const& [x, y] : testData) {
         auto yD = y.clone();
         denormalizeOutputTensor(x, yD, false);
 
@@ -105,7 +105,7 @@ namespace NeuralNetwork {
       }
       y_cross /= testData.size();
 
-      for (auto const&[x, y] : testData) {
+      for (auto const& [x, y] : testData) {
         auto prediction = network->forward(x);
         auto yD = y.clone();
         denormalizeOutputTensor(x, yD, false);
