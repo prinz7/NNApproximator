@@ -3,9 +3,15 @@
 # NNApproximator
 Project to test the approximation of an unknown function with a neural network.
 
-To get the needed library files, run getLibTorch.sh in the libs/ folder.
+#### Build requirements:
+
+To get the needed library files, run getLibTorch.sh in the libs/ folder:
+```
+./libs/getLibTorch.sh
+```
 
 #### Build project manually in terminal:
+
 In the cloned folder create a folder named 'build' and enter it:
 ```
 mkdir build
