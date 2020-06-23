@@ -15,7 +15,7 @@ namespace NeuralNetwork {
      * Constructor of the NetworkAnalyzer class.
      * Required are a reference to neural network instance and two function pointers which denormalize and unscale an output tensor.
      */
-    explicit NetworkAnalyzer(Network& network, DenormalizeOutputTensorFunction const& denormalizationFunction, UncaleOutputTensorFunction const& unscaleFunction);
+    explicit NetworkAnalyzer(Network& network, DenormalizeOutputTensorFunction denormalizationFunction, UncaleOutputTensorFunction unscaleFunction);
 
   public:
     /*
@@ -54,8 +54,8 @@ namespace NeuralNetwork {
 
   private:
     Network& network;
-    DenormalizeOutputTensorFunction const& denormalizeOutputTensor;
-    UncaleOutputTensorFunction const& unscaleOutputTensor;
+    DenormalizeOutputTensorFunction denormalizeOutputTensor;
+    UncaleOutputTensorFunction unscaleOutputTensor;
   };
 
 }
