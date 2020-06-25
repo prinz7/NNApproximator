@@ -19,27 +19,32 @@ This scripts run examples explained in https://github.com/prinz7/NNApproximator/
 ## More examples
 
 Example command to continue the training with
+
  - 2 days timeout
  - fixed seed (777)
  - standard layout (2 hidden layers, 500 nodes each)
  - logarithmic scaling
  - nohup for running it in the background (doesn't stop when closing the terminal)
-
-    nohup ./NNApproximator -i data.csv -ni 3 -no 1 --epsilon 0.0000000001 -t 4 --numberOfDeteriorations 5 --learnRate 0.001 --timeoutInHours 48 --seed 777 --outWeights weights_log_new --logScaling --layers 2 --nodes 500 --inWeights weights_log_old > console_log
+ 
+```
+nohup ./NNApproximator -i data.csv -ni 3 -no 1 --epsilon 0.0000000001 -t 4 --numberOfDeteriorations 5 --learnRate 0.001 --timeoutInHours 48 --seed 777 --outWeights weights_log_new --logScaling --layers 2 --nodes 500 --inWeights weights_log_old > console_log
+```
 
 ### Storing intermediate results along the way
 
-    target_epochs=100
-    current_epoch=0
-    while [ ${current_epoch} -lt ${target_epochs} ]; do
-        next_epoch=$((current_epoch + 10))
-        if [ ! -f interm_epochs_${next_epoch} ]; then
-            params="--input data.csv --numberIn 3 --numberOut 2 --epochs 10 --timeoutInHours 1 --outWeights interm_epochs_${next_epoch}"
-            if [ -f interm_epochs_${current_epoch} ]; then
-                params="${params} --inWeights interm_epochs_${current_epoch}"
-            fi
-            ./NNApproximator ${params}
-            echo "" # line break
+```
+target_epochs=100
+current_epoch=0
+while [ ${current_epoch} -lt ${target_epochs} ]; do
+    next_epoch=$((current_epoch + 10))
+    if [ ! -f interm_epochs_${next_epoch} ]; then
+        params="--input data.csv --numberIn 3 --numberOut 2 --epochs 10 --timeoutInHours 1 --outWeights interm_epochs_${next_epoch}"
+        if [ -f interm_epochs_${current_epoch} ]; then
+            params="${params} --inWeights interm_epochs_${current_epoch}"
         fi
-        current_epoch=${next_epoch}
-    done
+        ./NNApproximator ${params}
+        echo "" # line break
+    fi
+    current_epoch=${next_epoch}
+done
+```
