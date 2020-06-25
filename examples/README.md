@@ -1,4 +1,4 @@
-# README
+# Examples
 
 This scripts run examples explained in https://github.com/prinz7/NNApproximator/wiki/Program-execution-examples. Example scripts should be executed in order.
 
