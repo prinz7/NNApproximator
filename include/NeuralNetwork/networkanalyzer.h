@@ -6,7 +6,7 @@
 namespace NeuralNetwork {
 
   using DenormalizeOutputTensorFunction = std::function<void(torch::Tensor const& inputTensor, torch::Tensor& outputTensor, bool limitValues)>;
-  using UncaleOutputTensorFunction = std::function<void(torch::Tensor const& inputTensor, torch::Tensor& outputTensor)>;
+  using UnscaleOutputTensorFunction = std::function<void(torch::Tensor const& inputTensor, torch::Tensor& outputTensor)>;
 
   class NetworkAnalyzer
   {
@@ -15,7 +15,7 @@ namespace NeuralNetwork {
      * Constructor of the NetworkAnalyzer class.
      * Required are a reference to neural network instance and two function pointers which denormalize and unscale an output tensor.
      */
-    explicit NetworkAnalyzer(Network& network, DenormalizeOutputTensorFunction denormalizationFunction, UncaleOutputTensorFunction unscaleFunction);
+    explicit NetworkAnalyzer(Network& network, DenormalizeOutputTensorFunction denormalizationFunction, UnscaleOutputTensorFunction unscaleFunction);
 
   public:
     /*
@@ -55,7 +55,7 @@ namespace NeuralNetwork {
   private:
     Network& network;
     DenormalizeOutputTensorFunction denormalizeOutputTensor;
-    UncaleOutputTensorFunction unscaleOutputTensor;
+    UnscaleOutputTensorFunction unscaleOutputTensor;
   };
 
 }

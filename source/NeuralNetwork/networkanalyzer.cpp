@@ -1,7 +1,7 @@
 #include "NeuralNetwork/networkanalyzer.h"
 
 namespace NeuralNetwork {
-  NetworkAnalyzer::NetworkAnalyzer(Network& network_, DenormalizeOutputTensorFunction denormFunction, UncaleOutputTensorFunction unscaleFunction) :
+  NetworkAnalyzer::NetworkAnalyzer(Network& network_, DenormalizeOutputTensorFunction denormFunction, UnscaleOutputTensorFunction unscaleFunction) :
     network(network_), denormalizeOutputTensor(std::move(denormFunction)), unscaleOutputTensor(std::move(unscaleFunction))
   {
   }
