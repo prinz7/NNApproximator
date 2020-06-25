@@ -32,7 +32,7 @@ private:
 };
 
 /*
- * This makro defines the Network class depending on the NetworkImpl class.
+ * This macro defines the Network class depending on the NetworkImpl class.
  */
 TORCH_MODULE(Network);
 
