@@ -63,7 +63,8 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   }
 
   // Get min/max values
-  if (options.InputMinMaxFilePath != Utilities::DefaultValues::INPUT_MIN_MAX_FILE_PATH) {
+  bool minMaxInputtedByUser = options.InputMinMaxFilePath != Utilities::DefaultValues::INPUT_MIN_MAX_FILE_PATH;
+  if (minMaxInputtedByUser) {
     if (useMixedScaling) {
       auto minMaxFromFile = Utilities::DataProcessor::GetMixedMinMaxFromFile(options.InputMinMaxFilePath,
                                                                              options.NumberOfInputVariables, options.NumberOfOutputVariables);
@@ -85,6 +86,15 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     } else {
       Utilities::DataProcessor::CalculateMinMax(*dataOpt, minMax);
     }
+  }
+
+  if (!minMaxValuesAreValid()) {
+    if (minMaxInputtedByUser) {
+      std::cout << "The inputted min/max values are invalid. A minimum value must not be equal to the corresponding maximum value." << std::endl;
+    } else {
+      std::cout << "The inputted data is invalid. If no min/max values for the normalization are inputted, each column must contain at least 2 different values." << std::endl;
+    }
+    return false;
   }
 
   if (options.DebugOutput) {
@@ -134,6 +144,7 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
     unscaleOutputTensor(inTensor, outTensor);
   });
 
+  // Load pre-trained weights:
   if (options.InputNetworkParameters != Utilities::DefaultValues::INPUT_NETWORK_PARAMETERS) {
     torch::load(network, options.InputNetworkParameters);
   }
@@ -164,7 +175,7 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
   trainNetwork(data.first);
 
   if (options.DebugOutput) {
-    std::cout << "Training finished." << std::endl;
+    std::cout << "\nTraining finished." << std::endl;
   }
 
   network->eval();
@@ -191,6 +202,7 @@ bool Logic::performUserRequest(Utilities::ProgramOptions const& user_options)
 
   // Output behaviour of network:
   if (options.PrintBehaviour) {
+    std::cout << std::endl;
     if (options.ValidateAfterTraining) {
       std::cout << "R2 score (training): " << analyzer->calculateR2Score(data.first) << std::endl;
       std::cout << "R2 score alternate (training): " << analyzer->calculateR2ScoreAlternate(data.first) << std::endl;
@@ -500,7 +512,7 @@ inline void Logic::denormalizeOutputTensor(torch::Tensor const& inputTensor, tor
   }
 }
 
-void Logic::unscaleOutputTensor(torch::Tensor const& inputTensor, torch::Tensor& outputTensor)
+void Logic::unscaleOutputTensor(torch::Tensor const& inputTensor, torch::Tensor& outputTensor) const
 {
   if (options.LogScaling) {
     Utilities::DataProcessor::UnscaleLogarithmic(outputTensor);
@@ -520,6 +532,31 @@ void Logic::unscaleOutputTensor(torch::Tensor const& inputTensor, torch::Tensor&
       Utilities::DataProcessor::UnscaleSquareRoot(outputTensor);
     }
   }
+}
+
+bool Logic::minMaxValuesAreValid() const
+{
+  auto validationFunction = [] (std::vector<std::pair<TensorDataType, TensorDataType>> const& data) {
+    for (auto const& [min, max] : data) {
+      if (min == max) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  if (useMixedScaling) {
+    if (!validationFunction(mixedScalingMinMax.first.first) || !validationFunction(mixedScalingMinMax.first.second) ||
+        !validationFunction(mixedScalingMinMax.second.first) || !validationFunction(mixedScalingMinMax.second.second)) {
+      return false;
+    }
+  } else {
+    if (!validationFunction(inputMinMax) || !validationFunction(outputMinMax)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 }

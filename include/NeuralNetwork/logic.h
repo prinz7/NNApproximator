@@ -63,7 +63,12 @@ private:
   /*
    * Reverts the scaling on an output tensor.
    */
-  void unscaleOutputTensor(torch::Tensor const& inputTensor, torch::Tensor& outputTensor);
+  void unscaleOutputTensor(torch::Tensor const& inputTensor, torch::Tensor& outputTensor) const;
+  /*
+   * Checks if the given min/max values are valid --> min != max
+   */
+  [[nodiscard]]
+  bool minMaxValuesAreValid() const;
 
 private:
   Network network {nullptr};
