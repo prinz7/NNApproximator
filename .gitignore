@@ -1,3 +1,11 @@
 .idea/
+.vscode/
 build/
 libs/libtorch/
+
+# From example scripts
+examples/NNApproximator
+examples/myWeights
+examples/inferred_values.csv
+examples/minMaxLog.csv
+examples/interm_epochs_*
