@@ -12,8 +12,8 @@ This scripts run examples explained in https://github.com/prinz7/NNApproximator/
 
  - When the program is interrupted, no intermediate results are stored and all progress is lost!
    - Workaround: Run program in a loop with small epochs and time-out. Pay attention to --inWeights and --outWeights and make sure to work on the latest results.
- - When time-out is set, the currently running epoch is always finished. This can lead to an overall run-time (way) above the specified time-out.
- - Parameter --validatePercentage also requires parameter --validate to be set. Otherwise, there is no effect and no error message.
+ - When a time-out is set, the currently running epoch is always finished. This can lead to an overall run-time (way) above the specified time-out.
+ - Parameter --validatePercentage also requires parameter --validate to be set. Otherwise, there is no effect.
  - For inference, the input file needs values for all columns, even for the output columns. These can have any value. Also note, that R2 score will have no meaning in this scenario.
 
 ## More examples

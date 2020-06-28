@@ -13,6 +13,7 @@ static inline bool ConvertStringToBool(std::string const& str)
 std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc, char* argv[])
 {
   auto options = Utilities::ProgramOptions();
+  bool validationPercentageSet = false;
 
   for (int i = 1; i < argc; ++i) {
     std::string inputString (argv[i]);
@@ -186,6 +187,7 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
         }
         try {
           options.ValidationPercentage = std::stod(std::string(argv[++i]));
+          validationPercentageSet = true;
         } catch (std::exception const&) {
           std::cout << "Could not parse " << std::string(argv[i]) << " to double." << std::endl;
           return std::nullopt;
@@ -400,6 +402,35 @@ std::optional<ProgramOptions> OptionParser::ParseCommandLineParameters(int argc,
   if (options.BatchVariable.has_value() && options.BatchVariable.value() > options.NumberOfInputVariables) {
     std::cout << "Invalid batch variable: " << options.BatchVariable.value() << " -- number of input variables: " << options.NumberOfInputVariables << std::endl;
     return std::nullopt;
+  }
+
+  if (options.NumberOfThreads < 1) {
+    std::cout << "Invalid number of threads: " << options.NumberOfThreads << ". Please input a number > 0." << std::endl;
+    return std::nullopt;
+  }
+
+  if (options.LearnRate <= 0.0) {
+    std::cout << "Invalid learning rate: " << options.LearnRate << ". Please input a number > 0." << std::endl;
+    return std::nullopt;
+  }
+
+  // Warnings:
+  if (validationPercentageSet && !options.ValidateAfterTraining) {
+    std::cout << "[Warning] A validation percentage was set, but the validation mode is not active! Activate validation with --validate" << std::endl;
+  }
+
+  if (!options.InteractiveMode && !options.PrintBehaviour && options.OutputDiffFilePath == DefaultValues::OUTPUT_DIFF &&
+      options.OutputRelativeDiffFilePath == DefaultValues::OUTPUT_RELATIVE_DIFF && options.OutputMinMaxFilePath == DefaultValues::OUTPUT_MIN_MAX_FILE_PATH &&
+      options.OutputNetworkParameters == DefaultValues::OUTPUT_NETWORK_PARAMETERS && options.OutputValuesFilePath == DefaultValues::OUTPUT_VALUE) {
+    std::cout << "[Warning] No option was set to output something. For available commands try --help" << std::endl;
+  }
+
+  if (options.MaxExecutionTime > std::chrono::hours(24 * 7)) {
+    std::cout << "[Warning] The timeout is set to a very long time (> 1 week). If the execution is interrupted, all progress is lost." << std::endl;
+  }
+
+  if (options.Epsilon < 0.0) {
+    std::cout << "[Warning] With a negative epsilon, the probability is high that the program runs until the set timeout (even if no progress is made)." << std::endl;
   }
 
   // Change index range from [1, ...] to [0, ...]
